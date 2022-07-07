@@ -59,6 +59,10 @@ enum
 {
   PROP_0,
   PROP_SILENT,
+
+  PROP_MODEL_FILE,
+  PROP_LABEL_FILE
+  // TODO: add execution provider, optimzation level, etc.
 };
 
 /* the capabilities of the inputs and outputs.
@@ -68,13 +72,13 @@ enum
 static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS ("ANY")
+    GST_STATIC_CAPS (GST_VIDEO_CAPS_MAKE("{RGB,BGR}"))
     );
 
 static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS ("ANY")
+    GST_STATIC_CAPS (GST_VIDEO_CAPS_MAKE("{RGB,BGR}"))
     );
 
 #define gst_ortobjectdetector_parent_class parent_class
@@ -107,7 +111,11 @@ gst_ortobjectdetector_class_init (GstortobjectdetectorClass * klass)
 
   g_object_class_install_property (gobject_class, PROP_SILENT,
       g_param_spec_boolean ("silent", "Silent", "Produce verbose output ?",
-          FALSE, G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE));
+          FALSE, G_PARAM_READWRITE));
+
+  g_object_class_install_property (gobject_class, PROP_MODEL_FILE,
+      g_param_spec_string ("model-file", "ONNX model file", "Path to ONNX model file",
+          NULL, (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
 
   gst_element_class_set_details_simple (gstelement_class,
       "ortobjectdetector",
@@ -195,7 +203,7 @@ gst_ortobjectdetector_transform_ip (GstBaseTransform * base, GstBuffer * outbuf)
 
   if (!vmeta) {
     GST_WARNING_OBJECT (base, "missing video meta");
-    return FALSE;
+    return GST_FLOW_ERROR;
   }
 
   if (gst_buffer_map(outbuf, &info, GST_MAP_READ)) {
@@ -214,6 +222,14 @@ ortobjectdetector_init (GstPlugin * ortobjectdetector)
 {
   return GST_ELEMENT_REGISTER (ortobjectdetector, ortobjectdetector);
 }
+
+#ifndef PACKAGE
+#define PACKAGE "ortobjectdetector"
+#define PACKAGE_VERSION "1.19.0.1"
+#define GST_LICENSE "LGPL"
+#define GST_PACKAGE_NAME "ortobjectdetector"
+#define GST_PACKAGE_ORIGIN "https://gstreamer.freedesktop.org"
+#endif
 
 /* gstreamer looks for this structure to register ortobjectdetectors
  *

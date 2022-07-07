@@ -32,7 +32,7 @@ if onnxrt_dep.found()
 	endif
 
   gstortobjectdetector_sources = [
-    'src/gstortobjectdetector.c',
+    'src/gstortobjectdetector.cpp',
     ]
 
   driver_sources = [
