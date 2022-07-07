@@ -35,6 +35,10 @@ G_DECLARE_FINAL_TYPE (Gstortobjectdetector, gst_ortobjectdetector,
 struct _Gstortobjectdetector {
   GstBaseTransform element;
 
+  gchar *model_file;
+  gchar *label_file;
+  gpointer ort_client;
+
   gboolean silent;
 };
 
