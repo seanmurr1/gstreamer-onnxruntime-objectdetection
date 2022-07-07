@@ -45,6 +45,8 @@
 
 #include "gstortobjectdetector.h"
 
+#include "ortclient.h"
+
 GST_DEBUG_CATEGORY_STATIC (gst_ortobjectdetector_debug);
 #define GST_CAT_DEFAULT gst_ortobjectdetector_debug
 
@@ -116,6 +118,10 @@ gst_ortobjectdetector_class_init (GstortobjectdetectorClass * klass)
   g_object_class_install_property (gobject_class, PROP_MODEL_FILE,
       g_param_spec_string ("model-file", "ONNX model file", "Path to ONNX model file",
           NULL, (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
+  
+g_object_class_install_property (gobject_class, PROP_LABEL_FILE,
+      g_param_spec_string ("label-file", "Class label file", "Path to class label file for ONNX model",
+          NULL, (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
 
   gst_element_class_set_details_simple (gstelement_class,
       "ortobjectdetector",
@@ -142,20 +148,44 @@ gst_ortobjectdetector_class_init (GstortobjectdetectorClass * klass)
  * initialize instance structure
  */
 static void
-gst_ortobjectdetector_init (Gstortobjectdetector * filter)
+gst_ortobjectdetector_init (Gstortobjectdetector * self)
 {
-  filter->silent = FALSE;
+  self->silent = FALSE;
+  self->ort_client = new OrtClient(self->model_file, self->label_file);
 }
 
 static void
 gst_ortobjectdetector_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec)
 {
-  Gstortobjectdetector *filter = GST_ORTOBJECTDETECTOR (object);
+  Gstortobjectdetector *self = GST_ORTOBJECTDETECTOR (object);
+  const gchar *filename;
 
   switch (prop_id) {
     case PROP_SILENT:
-      filter->silent = g_value_get_boolean (value);
+      self->silent = g_value_get_boolean (value);
+      break;
+    case PROP_MODEL_FILE:
+      filename = g_value_get_string(value);
+      if (filename && g_file_test(filename, (GFileTest) (G_FILE_TEST_EXISTS | G_FILE_TEST_IS_REGULAR))) {
+        if (self->model_file) 
+          g_free(self->model_file);
+        self->model_file = g_strdup(filename);
+      } else {
+        GST_WARNING_OBJECT (self, "Model file '%s' not found!", filename);
+        gst_base_transform_set_passthrough(GST_BASE_TRANSFORM (self), TRUE);
+      }
+      break;
+    case PROP_LABEL_FILE:
+      filename = g_value_get_string(value);
+      if (filename && g_file_test(filename, (GFileTest) (G_FILE_TEST_EXISTS | G_FILE_TEST_IS_REGULAR))) {
+        if (self->label_file) 
+          g_free(self->label_file);
+        self->label_file = g_strdup(filename);
+      } else {
+        GST_WARNING_OBJECT (self, "Label file '%s' not found!", filename);
+        gst_base_transform_set_passthrough(GST_BASE_TRANSFORM (self), TRUE);
+      }
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -167,11 +197,17 @@ static void
 gst_ortobjectdetector_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec)
 {
-  Gstortobjectdetector *filter = GST_ORTOBJECTDETECTOR (object);
+  Gstortobjectdetector *self = GST_ORTOBJECTDETECTOR (object);
 
   switch (prop_id) {
     case PROP_SILENT:
-      g_value_set_boolean (value, filter->silent);
+      g_value_set_boolean (value, self->silent);
+      break;
+    case PROP_MODEL_FILE:
+      g_value_set_string(value, self->model_file);
+      break;
+    case PROP_LABEL_FILE:
+      g_value_set_string(value, self->label_file);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);

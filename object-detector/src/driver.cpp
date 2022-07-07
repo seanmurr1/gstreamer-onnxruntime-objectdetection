@@ -3,7 +3,10 @@
 #include "ortclient.h"
 
 int main(int argc, char* argv[]) {
-    OrtClient ort_client("../../assets/models/yolov4/yolov4.onnx", "../../assets/models/yolov4/labels.txt");
+    std::string model_path = "../../assets/models/yolov4/yolov4.onnx";
+    std::string label_path = "../../assets/models/yolov4/labels.txt";
+
+    OrtClient ort_client(model_path, label_path);
     auto res = ort_client.init();
     std::cout << (bool) res << std::endl;
     
