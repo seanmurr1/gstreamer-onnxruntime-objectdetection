@@ -39,6 +39,9 @@
 #include <gst/gst.h>
 #include <gst/base/base.h>
 #include <gst/controller/controller.h>
+#include <gst/video/video.h>
+#include <gst/video/gstvideometa.h>
+
 
 #include "gstortobjectdetector.h"
 
@@ -185,6 +188,19 @@ gst_ortobjectdetector_transform_ip (GstBaseTransform * base, GstBuffer * outbuf)
 
   /* FIXME: do something interesting here.  This simply copies the source
    * to the destination. */
+
+
+  GstMapInfo info;
+  GstVideoMeta *vmeta = gst_buffer_get_video_meta(outbuf);
+
+  if (!vmeta) {
+    GST_WARNING_OBJECT (base, "missing video meta");
+    return FALSE;
+  }
+
+  if (gst_buffer_map(outbuf, &info, GST_MAP_READ)) {
+    
+  }
 
   return GST_FLOW_OK;
 }
