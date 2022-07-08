@@ -48,6 +48,8 @@ std::vector<float> YOLOv4::preprocess(uint8_t* data, int width, int height) {
     org_image_w = width;
     // Create opencv mat image
     std::vector<int> image_size{height, width};
+    
+    // NOTE: this does not copy data, simply wraps
     org_image = cv::Mat(image_size, CV_8UC3, data);
 
     // TODO: check if its width, height or reversed 
