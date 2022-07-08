@@ -150,8 +150,12 @@ g_object_class_install_property (gobject_class, PROP_LABEL_FILE,
 static void
 gst_ortobjectdetector_init (Gstortobjectdetector * self)
 {
+  g_print ("Init Function:\n");
   self->silent = FALSE;
   self->ort_client = new OrtClient();
+  g_print ("Created client\n");
+  g_print ("model-file: %s\n", self->model_file);
+  g_print ("label-file: %s\n", self->label_file);
 }
 
 static void
@@ -217,6 +221,8 @@ gst_ortobjectdetector_get_property (GObject * object, guint prop_id,
 
 static gboolean
 gst_ortobjectdetector_ort_setup (GstBaseTransform *base) {
+  g_print ("Attempting ORT setup\n");
+
   Gstortobjectdetector *self = GST_ORTOBJECTDETECTOR (base);
   auto ort_client = (OrtClient*) self->ort_client;
 
@@ -232,7 +238,11 @@ gst_ortobjectdetector_ort_setup (GstBaseTransform *base) {
     return FALSE;
   }
 
+  g_print ("model-file: %s\n", self->model_file);
+  g_print ("label-file: %s\n", self->label_file);
+  g_print ("Initializing...\n");
   auto res = ort_client->init(self->model_file, self->label_file);
+  g_print ("Initialized: %s\n", res ? "true" : "false");
   GST_OBJECT_UNLOCK (self);
   return res;
 }
@@ -260,21 +270,30 @@ gst_ortobjectdetector_transform_caps (GstBaseTransform *base, GstPadDirection di
 
 /* GstBaseTransform vmethod implementations */
 
-/* this function does the actual processing
+/* this function does the actual processing (IP = in place)
  */
 static GstFlowReturn
 gst_ortobjectdetector_transform_ip (GstBaseTransform * base, GstBuffer * outbuf)
 {
-  Gstortobjectdetector *filter = GST_ORTOBJECTDETECTOR (base);
+  Gstortobjectdetector *self = GST_ORTOBJECTDETECTOR (base);
+  auto ort_client = (OrtClient*) self->ort_client;
+
+  if (!gst_ortobjectdetector_ort_setup(base)) {
+    return GST_FLOW_ERROR;
+  }
 
   if (GST_CLOCK_TIME_IS_VALID (GST_BUFFER_TIMESTAMP (outbuf)))
-    gst_object_sync_values (GST_OBJECT (filter), GST_BUFFER_TIMESTAMP (outbuf));
+    gst_object_sync_values (GST_OBJECT (self), GST_BUFFER_TIMESTAMP (outbuf));
 
-  if (filter->silent == FALSE)
+  if (self->silent == FALSE)
     g_print ("I'm plugged, therefore I'm in.\n");
 
   /* FIXME: do something interesting here.  This simply copies the source
    * to the destination. */
+
+  if (gst_base_transform_is_passthrough(base)) {
+    return GST_FLOW_OK;
+  }
 
 
   GstMapInfo info;
@@ -285,8 +304,10 @@ gst_ortobjectdetector_transform_ip (GstBaseTransform * base, GstBuffer * outbuf)
     return GST_FLOW_ERROR;
   }
 
-  if (gst_buffer_map(outbuf, &info, GST_MAP_READ)) {
-    
+  if (gst_buffer_map(outbuf, &info, GST_MAP_READWRITE)) {
+    // This should modify data in place?
+    auto res = ort_client->runModel(info.data, vmeta->width, vmeta->height);
+    gst_buffer_unmap (outbuf, &info);
   }
 
   return GST_FLOW_OK;
