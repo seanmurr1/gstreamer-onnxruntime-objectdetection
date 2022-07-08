@@ -2,18 +2,13 @@
 #include "ortclient.h"
 #include "yolov4.h"
 
-OrtClient::OrtClient() {}
-
-OrtClient::OrtClient(std::string model_path, std::string label_path) {
-    onnx_model_path = model_path;
-    class_labels_path = label_path;
-    // TODO: add ability to change model
-    model = new YOLOv4();
-}
-
 OrtClient::~OrtClient() {
     //TODO
     delete model;
+}
+
+bool OrtClient::isInitialized() {
+    return check_init;
 }
 
 /**
@@ -94,7 +89,11 @@ bool OrtClient::loadClassLabels() {
  * @return true if setup was successful.
  * @return false if setup failed.
  */
-bool OrtClient::init() {
+bool OrtClient::init(std::string model_path, std::string label_path) {
+    onnx_model_path = model_path;
+    class_labels_path = label_path;
+    // TODO: add ability to change model
+    model = new YOLOv4();
     setOrtEnv();
     createSession();
     setModelInputOutput();

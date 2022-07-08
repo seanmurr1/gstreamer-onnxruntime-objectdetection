@@ -33,10 +33,9 @@ class OrtClient {
         void createSession(); // TODO add optimization level and exeuction provider
 
     public:
-        OrtClient();
-        OrtClient(std::string model_path, std::string label_path);
         ~OrtClient();
-        bool init();
+        bool init(std::string model_path, std::string label_path);
+        bool isInitialized();
         uint8_t* runModel(uint8_t *data, int width, int height);
 };
 

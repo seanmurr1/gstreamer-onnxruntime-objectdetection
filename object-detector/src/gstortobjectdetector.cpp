@@ -151,7 +151,7 @@ static void
 gst_ortobjectdetector_init (Gstortobjectdetector * self)
 {
   self->silent = FALSE;
-  self->ort_client = new OrtClient(self->model_file, self->label_file);
+  self->ort_client = new OrtClient();
 }
 
 static void
@@ -214,6 +214,29 @@ gst_ortobjectdetector_get_property (GObject * object, guint prop_id,
       break;
   }
 }
+
+static gboolean
+gst_ortobjectdetector_ort_setup (GstBaseTransform *base) {
+  Gstortobjectdetector *self = GST_ORTOBJECTDETECTOR (base);
+  auto ort_client = (OrtClient*) self->ort_client;
+
+  GST_OBJECT_LOCK (self);
+  if (ort_client->isInitialized()) {
+    GST_OBJECT_UNLOCK (self);
+    return TRUE;
+  }
+
+  if (!self->model_file || !self->label_file) {
+    GST_OBJECT_UNLOCK (self);
+    GST_ERROR_OBJECT (self, "Unable to initialize ORT client without model and/or label file.");
+    return FALSE;
+  }
+
+  auto res = ort_client->init(self->model_file, self->label_file);
+  GST_OBJECT_UNLOCK (self);
+  return res;
+}
+
 
 /* GstBaseTransform vmethod implementations */
 
