@@ -1,5 +1,9 @@
 #include "yolov4.h"
 
+YOLOv4::YOLOv4() {
+    loadClassColors();
+}
+
 ObjectDetectionModel::~ObjectDetectionModel() { }
 
 YOLOv4::~YOLOv4() { }
@@ -254,6 +258,32 @@ std::vector<BoundingBox*> YOLOv4::nms(std::vector<BoundingBox*> bboxes, float th
     return filtered_boxes;
 }
 
+// Create unique, constant color for each class id
+void YOLOv4::loadClassColors() {
+    // Convert HSV to RGB
+    // Saturation and Value will always be 1
+    // Hue depends on class index
+    for (int i = 0; i < NUM_CLASSES; i++) {
+        float h = ((1.0f * i) / NUM_CLASSES) * 360;
+        float x = 1.0f - std::abs(std::fmod(h / 60, 2) - 1);
+        float r, g, b;
+        if (h >= 0 && h < 60) {
+            r = 255, g = x * 255, b = 0;
+        } else if (h >= 60 && h < 120) {
+            r = x * 255, g = 255, b = 0;
+        } else if (h >= 120 && h < 180) {
+            r = 0, g = 255, b = x * 255;
+        } else if (h >= 180 && h < 240) {
+            r = 0, g = x * 255, b = 255;
+        } else if (h >= 240 && h < 300) {
+            r = x * 255, g = 0, b = 255;
+        } else {
+            r = 255, g = 0, b = x * 255;
+        }
+        class_colors[i] = cv::Scalar(r, g, b);
+    }
+}
+
 /**
  * @brief Write bounding boxes and class labels/scores to original image.
  * 
@@ -263,9 +293,6 @@ std::vector<BoundingBox*> YOLOv4::nms(std::vector<BoundingBox*> bboxes, float th
 void YOLOv4::writeBoundingBoxes(std::vector<BoundingBox*> bboxes, std::vector<std::string> class_names) {
     float font_scale = 0.5f;
     int bbox_thick = (int) (0.6f * (org_image_h + org_image_w) / 600.f);
-    std::srand(5);
-
-    std::unordered_map<int, cv::Scalar> class_colors;
 
     for (size_t i = 0; i < bboxes.size(); i++) {
         // Bounding box information
@@ -277,15 +304,7 @@ void YOLOv4::writeBoundingBoxes(std::vector<BoundingBox*> bboxes, std::vector<st
 
         std::cout << "Found " << class_name << std::endl;
 
-        // Get color for class
-        cv::Scalar color;
-        if (class_colors.find(bbox->class_index) != class_colors.end()) {
-            color = class_colors.at(bbox->class_index);
-        } else {
-            color = cv::Scalar((std::rand()%256), std::rand()%256, std::rand()%256);
-            class_colors[bbox->class_index] = color;
-        }
-
+        cv::Scalar color = class_colors[bbox->class_index];
         // Place rectangle around bounding box
         cv::Rect rect = cv::Rect(c1, c2);
         cv::rectangle(org_image, rect, color, bbox_thick);

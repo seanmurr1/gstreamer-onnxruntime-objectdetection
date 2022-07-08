@@ -27,6 +27,9 @@ class YOLOv4 : public ObjectDetectionModel {
         cv::Mat org_image;
         float resize_ratio;
 
+        std::unordered_map<int, cv::Scalar> class_colors;
+
+        void loadClassColors();
         cv::Mat padImage(cv::Mat image);
         std::vector<BoundingBox*> getBoundingBoxes(std::vector<Ort::Value> &model_output, std::vector<float> anchors, std::vector<float> strides, std::vector<float> xyscale, float threshold);
         float bbox_iou(BoundingBox *bbox1, BoundingBox *bbox2);
@@ -35,6 +38,7 @@ class YOLOv4 : public ObjectDetectionModel {
 
     public:
         ~YOLOv4();
+        YOLOv4();
         size_t getNumClasses();
         size_t getInputTensorSize();
         std::vector<float> preprocess(uint8_t* data, int width, int height);
