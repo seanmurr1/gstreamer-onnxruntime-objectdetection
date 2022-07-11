@@ -30,13 +30,21 @@ class YOLOv4 : public ObjectDetectionModel {
         int org_image_h;
         cv::Mat org_image;
         float resize_ratio;
+        float dw;
+        float dh;
 
         std::vector<cv::Scalar> class_colors;
         std::vector<float> input_tensor_values;
 
+        std::vector<float> anchors;
+        std::vector<float> strides;
+        std::vector<float> xyscale;
+
         void loadClassColors();
         cv::Mat padImage(cv::Mat const &image);
-        std::vector<BoundingBox*> getBoundingBoxes(std::vector<Ort::Value> &model_output, std::vector<float> &anchors, std::vector<float> &strides, std::vector<float> &xyscale, float threshold);
+        std::pair<int, float> findMaxClass(float *layer_output, long offset);
+        bool transformCoordinates(std::vector<float> &coords, int layer, int row, int col, int anchor);
+        std::vector<BoundingBox*> getBoundingBoxes(std::vector<Ort::Value> &model_output, float threshold);
         float bbox_iou(BoundingBox *bbox1, BoundingBox *bbox2);
         std::vector<BoundingBox*> nms(std::vector<BoundingBox*> bboxes, float threshold);
         void writeBoundingBoxes(std::vector<BoundingBox*> bboxes, std::vector<std::string> class_names);

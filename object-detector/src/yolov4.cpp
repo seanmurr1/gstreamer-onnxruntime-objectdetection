@@ -3,6 +3,9 @@
 YOLOv4::YOLOv4() {
     loadClassColors();
     input_tensor_values = std::vector<float>(getInputTensorSize());
+    anchors = std::vector<float>{12.f,16.f, 19.f,36.f, 40.f,28.f, 36.f,75.f, 76.f,55.f, 72.f,146.f, 142.f,110.f, 192.f,243.f, 459.f,401.f};
+    strides = std::vector<float>{8.f, 16.f, 32.f};
+    xyscale = std::vector<float>{1.2, 1.1, 1.05};
 }
 
 ObjectDetectionModel::~ObjectDetectionModel() { }
@@ -31,12 +34,12 @@ cv::Mat YOLOv4::padImage(cv::Mat const &image) {
     int nh = resize_ratio * org_image_h;
 
     // Padding on either side
-    float dw = std::floor((INPUT_WIDTH - nw) / 2.0f);
-    float dh = std::floor((INPUT_HEIGHT - nh) / 2.0f);
+    dw = (INPUT_WIDTH - nw) / 2.0f;
+    dh = (INPUT_HEIGHT - nh) / 2.0f;
 
     cv::Mat padded(INPUT_HEIGHT, INPUT_WIDTH, CV_8UC3, cv::Scalar(128, 128, 128));
     cv::Mat resized;
-    cv::resize(image, resized, cv::Size(nw, nh));
+    cv::resize(image, resized, cv::Size(std::floor(nw), std::floor(nh)));
     resized.copyTo(padded(cv::Rect(dw, dh, resized.cols, resized.rows)));
     return padded;
 }
@@ -82,21 +85,83 @@ float sigmoid(float value) {
 }
 
 /**
+ * @brief Transforms YOLOv4 output coordinates into xmin, ymin, xmax, ymax 
+ * coordinates relative to original input image.
+ * 
+ * @param coords raw YOLOv4 output coordinates of bounding box {x, y, w, h}
+ * @param layer current layer.
+ * @param row row of grid cell.
+ * @param col column of grid cell.
+ * @param anchor anchor index in grid cell.
+ * @return true if transformed coordinates are valid.
+ * @return false if transformed coordinates are invalid.
+ */
+bool YOLOv4::transformCoordinates(std::vector<float> &coords, int layer, int row, int col, int anchor) {
+    float x = coords[0];
+    float y = coords[1];
+    float w = coords[2];
+    float h = coords[3];
+    // Transform coordinates
+    x = ((sigmoid(x) * xyscale[layer]) - 0.5f * (xyscale[layer] - 1.0f) + col) * strides[layer];
+    y = ((sigmoid(y) * xyscale[layer]) - 0.5f * (xyscale[layer] - 1.0f) + row) * strides[layer];
+    h = exp(h) * anchors[(layer * 6) + (anchor * 2) + 1]; 
+    w = exp(w) * anchors[(layer * 6) + (anchor * 2)];   
+    // Convert (x, y, w, h) => (xmin, ymin, xmax, ymax)
+    float xmin = x - w * 0.5f;
+    float ymin = y - h * 0.5f;
+    float xmax = x + w * 0.5f;
+    float ymax = y + h * 0.5f;
+    // Convert (xmin, ymin, xmax, ymax) => (xmin_org, ymin_org, xmax_org, ymax_org), relative to original image
+    float xmin_org = 1.0f * (xmin - dw) / resize_ratio;
+    float ymin_org = 1.0f * (ymin - dh) / resize_ratio;
+    float xmax_org = 1.0f * (xmax - dw) / resize_ratio;
+    float ymax_org = 1.0f * (ymax - dh) / resize_ratio;
+    // Disregard clipped boxes
+    if (xmin_org > xmax_org || ymin_org > ymax_org) {
+        return false;
+    }
+    // Disregard boxes with invalid size/area
+    auto area = (xmax_org - xmin_org) * (ymax_org - ymin_org);
+    if (area <= 0 || isnan(area) || !isfinite(area)) {
+        return false;
+    }
+    // Update vector
+    coords[0] = xmin_org;
+    coords[1] = ymin_org;
+    coords[2] = xmax_org;
+    coords[3] = ymax_org;
+    return true;
+}
+
+/**
+ * @brief Finds class with highest probabilty for a given bounding box;
+ * 
+ * @param layer_output current layer model output.
+ * @param offset offset to beginning of bounding box data
+ * @return std::pair<int, float> (index, probability)
+ */
+std::pair<int, float> YOLOv4::findMaxClass(float *layer_output, long offset) {
+    int max_class = -1;
+    float max_prob;
+    for (int i = 0; i < NUM_CLASSES; i++) {
+        if (max_class == -1 || layer_output[offset + 5 + i] > max_prob) {
+            max_class = i;
+            max_prob = layer_output[offset + 5 + i];
+        }
+    }
+    return std::pair<int, float>(max_class, max_prob);
+}
+
+/**
  * @brief Parses model output to extract bounding boxes. Filters bounding boxes and converts coordinates
  * to be respective to original image.
  * 
  * @param model_output YOLOv4 inferencing output.
- * @param anchors vector of YOLOv4 anchors value (for each anchor index of each layer).
- * @param strides vector of strides for each output layer.
- * @param xyscale vector of xyscale for each output layer.
  * @param threshold threshold to filter boxes based on confidence/score.
  * @return filtered bounding boxes from model output (all layers).
  */
-std::vector<BoundingBox*> YOLOv4::getBoundingBoxes(std::vector<Ort::Value> &model_output, std::vector<float> &anchors, std::vector<float> &strides, std::vector<float> &xyscale, float threshold) {
+std::vector<BoundingBox*> YOLOv4::getBoundingBoxes(std::vector<Ort::Value> &model_output, float threshold) {
     std::vector<BoundingBox*> bboxes;
-    float dw = (INPUT_WIDTH - resize_ratio * org_image_w) / 2;
-    float dh = (INPUT_HEIGHT - resize_ratio * org_image_h) / 2;
-
     // Iterate through output layers
     for (size_t layer = 0; layer < model_output.size(); layer++) {
         // Layer data
@@ -105,66 +170,35 @@ std::vector<BoundingBox*> YOLOv4::getBoundingBoxes(std::vector<Ort::Value> &mode
         auto grid_size = layer_shape[1];
         auto anchors_per_cell = layer_shape[3];
         auto features_per_anchor = layer_shape[4];
-
         // Iterate through grid cells in current layer, and anchors in each grid cell
         for (auto row = 0; row < grid_size; row++) {
             for (auto col = 0; col < grid_size; col++) {
                 for (auto anchor = 0; anchor < anchors_per_cell; anchor++) {
                     // Calculate offset for current grid cell and anchor
-                    auto offset = (row * grid_size * anchors_per_cell * features_per_anchor) + (col * anchors_per_cell * features_per_anchor) + (anchor * features_per_anchor);
+                    long offset = (row * grid_size * anchors_per_cell * features_per_anchor) + (col * anchors_per_cell * features_per_anchor) + (anchor * features_per_anchor);
                     // Extract data
-                    auto x = layer_output[offset + 0];
-                    auto y = layer_output[offset + 1];
-                    auto h = layer_output[offset + 3]; 
-                    auto w = layer_output[offset + 2];
-                    auto conf = layer_output[offset + 4];
-
+                    float x = layer_output[offset + 0];
+                    float y = layer_output[offset + 1];
+                    float w = layer_output[offset + 2];
+                    float h = layer_output[offset + 3]; 
+                    float conf = layer_output[offset + 4];
                     if (conf < threshold) {
-                        //continue;
-                    }
-
-                    // Transform coordinates
-                    x = ((sigmoid(x) * xyscale[layer]) - 0.5f * (xyscale[layer] - 1.0f) + col) * strides[layer];
-                    y = ((sigmoid(y) * xyscale[layer]) - 0.5f * (xyscale[layer] - 1.0f) + row) * strides[layer];
-                    h = exp(h) * anchors[(layer * 6) + (anchor * 2) + 1]; 
-                    w = exp(w) * anchors[(layer * 6) + (anchor * 2)];   
-                    // Convert (x, y, w, h) => (xmin, ymin, xmax, ymax)
-                    auto xmin = x - w * 0.5f;
-                    auto ymin = y - h * 0.5f;
-                    auto xmax = x + w * 0.5f;
-                    auto ymax = y + h * 0.5f;
-                    // Convert (xmin, ymin, xmax, ymax) => (xmin_org, ymin_org, xmax_org, ymax_org), relative to original image
-                    auto xmin_org = 1.0f * (xmin - dw) / resize_ratio;
-                    auto ymin_org = 1.0f * (ymin - dh) / resize_ratio;
-                    auto xmax_org = 1.0f * (xmax - dw) / resize_ratio;
-                    auto ymax_org = 1.0f * (ymax - dh) / resize_ratio;
-
-                    // Disregard clipped boxes
-                    if (xmin_org > xmax_org || ymin_org > ymax_org) {
                         continue;
                     }
-                    // Disregard boxes with invalid size/area
-                    auto area = (xmax_org - xmin_org) * (ymax_org - ymin_org);
-                    if (area <= 0 || isnan(area) || !isfinite(area)) {
+                    // Convert coordinates
+                    std::vector<float> coords{x, y, w, h};
+                    if (!transformCoordinates(coords, layer, row, col, anchor)) {
                         continue;
                     }
-
                     // Find class with highest probability
-                    int max_class = -1;
-                    float max_prob;
-                    for (int i = 0; i < NUM_CLASSES; i++) {
-                        if (max_class == -1 || layer_output[offset + 5 + i] > max_prob) {
-                            max_class = i;
-                            max_prob = layer_output[offset + 5 + i];
-                        }
-                    }
+                    std::pair<int, float> max_class_prob = findMaxClass(layer_output, offset);
                     // Calculate score and compare against threshold
-                    float score = conf * max_prob;
-                    if (score <= threshold) {
+                    float score = conf * max_class_prob.second;
+                    if (score < threshold) {
                         continue;
                     }
                     // Create bounding box and add to vector
-                    BoundingBox *bbox = new BoundingBox(xmin_org, ymin_org, xmax_org, ymax_org, score, max_class);
+                    BoundingBox *bbox = new BoundingBox(coords[0], coords[1], coords[2], coords[3], score, max_class_prob.first);
                     bboxes.push_back(bbox);
                 }
             }
@@ -183,7 +217,7 @@ std::vector<BoundingBox*> YOLOv4::getBoundingBoxes(std::vector<Ort::Value> &mode
 float YOLOv4::bbox_iou(BoundingBox *bbox1, BoundingBox *bbox2) {
     float area1 = (bbox1->xmax - bbox1->xmin) * (bbox1->ymax - bbox1->ymin);
     float area2 = (bbox2->xmax - bbox2->xmin) * (bbox2->ymax - bbox2->ymin);
-
+    // Coords of intersection box
     float left = std::max(bbox1->xmin, bbox2->xmin);
     float right = std::min(bbox1->xmax, bbox2->xmax);
     float top = std::max(bbox1->ymin, bbox2->ymin);
@@ -218,7 +252,6 @@ std::vector<BoundingBox*> YOLOv4::nms(std::vector<BoundingBox*> bboxes, float th
     for (size_t i = 0; i < bboxes.size(); i++) {
         class_map[bboxes[i]->class_index].push_back(bboxes[i]);        
     }
-    //num_classes_detected = class_map.size();
 
     std::vector<BoundingBox*> filtered_boxes;
 
@@ -291,7 +324,7 @@ void YOLOv4::writeBoundingBoxes(std::vector<BoundingBox*> bboxes, std::vector<st
     for (size_t i = 0; i < bboxes.size(); i++) {
         // Bounding box information
         BoundingBox *bbox = bboxes[i];
-        std::string class_name = class_names[bbox->class_index];
+        std::string &class_name = class_names[bbox->class_index];
         float score = bbox->score;
         auto c1 = cv::Point(bbox->xmin, bbox->ymin);
         auto c2 = cv::Point(bbox->xmax, bbox->ymax);
@@ -316,11 +349,7 @@ void YOLOv4::writeBoundingBoxes(std::vector<BoundingBox*> bboxes, std::vector<st
 }
 
 uint8_t* YOLOv4::postprocess(std::vector<Ort::Value> &model_output, std::vector<std::string> class_labels) {
-    std::vector<float> anchors{12.f,16.f, 19.f,36.f, 40.f,28.f, 36.f,75.f, 76.f,55.f, 72.f,146.f, 142.f,110.f, 192.f,243.f, 459.f,401.f};
-    std::vector<float> strides{8.f, 16.f, 32.f};
-    std::vector<float> xyscale{1.2, 1.1, 1.05};
-
-    std::vector<BoundingBox*> bboxes = getBoundingBoxes(model_output, anchors, strides, xyscale, 0.25);
+    std::vector<BoundingBox*> bboxes = getBoundingBoxes(model_output, 0.25);
     bboxes = nms(bboxes, 0.213);
     writeBoundingBoxes(bboxes, class_labels);
     cv::imwrite("../../assets/images/pleasepleaseplease.png", org_image);
