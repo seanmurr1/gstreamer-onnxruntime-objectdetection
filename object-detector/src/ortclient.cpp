@@ -116,11 +116,7 @@ bool OrtClient::init(std::string model_path, std::string label_path) {
 uint8_t* OrtClient::runModel(uint8_t *data, int width, int height) {
     auto memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
 
-    std::vector<float> input_tensor_values = model->preprocess(data, width, height);
-
-    // std::cout << "Test values: " << std::endl;
-    // std::cout << input_tensor_values[2003] << std::endl;
-    
+    std::vector<float> &input_tensor_values = model->preprocess(data, width, height);
     Ort::Value input_tensor = Ort::Value::CreateTensor<float>(memory_info, input_tensor_values.data(), input_tensor_size, input_node_dims[0].data(), input_node_dims[0].size());
     assert(input_tensor.IsTensor());
 

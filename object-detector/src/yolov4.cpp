@@ -2,6 +2,7 @@
 
 YOLOv4::YOLOv4() {
     loadClassColors();
+    input_tensor_values = std::vector<float>(getInputTensorSize());
 }
 
 ObjectDetectionModel::~ObjectDetectionModel() { }
@@ -17,13 +18,13 @@ size_t YOLOv4::getInputTensorSize() {
 }
 
 /**
- * @brief Pads inputted image to YOLOv4 input specifications.
+ * @brief Pads image to YOLOv4 input specifications.
  * Preserves aspect ratio. Pad with grey (128, 128, 128) pixels.
  * 
  * @param image image to pad.
- * @return cv::Mat padded image.
+ * @return padded image.
  */
-cv::Mat YOLOv4::padImage(cv::Mat image) {
+cv::Mat YOLOv4::padImage(cv::Mat const &image) {
     resize_ratio = std::min(INPUT_WIDTH / (org_image_w * 1.0f), INPUT_HEIGHT / (org_image_h * 1.0f));
     // New dimensions to preserve aspect ratio
     int nw = resize_ratio * org_image_w;
@@ -33,21 +34,22 @@ cv::Mat YOLOv4::padImage(cv::Mat image) {
     float dw = std::floor((INPUT_WIDTH - nw) / 2.0f);
     float dh = std::floor((INPUT_HEIGHT - nh) / 2.0f);
 
-    cv::Mat out(INPUT_HEIGHT, INPUT_WIDTH, CV_8UC3, cv::Scalar(128, 128, 128));
+    cv::Mat padded(INPUT_HEIGHT, INPUT_WIDTH, CV_8UC3, cv::Scalar(128, 128, 128));
     cv::Mat resized;
     cv::resize(image, resized, cv::Size(nw, nh));
-    resized.copyTo(out(cv::Rect(dw, dh, resized.cols, resized.rows)));
-    return out;
+    resized.copyTo(padded(cv::Rect(dw, dh, resized.cols, resized.rows)));
+    return padded;
 }
 
 /**
- * @brief Preprocesses input data to comply with input specifications of YOLOv4 algorithm.
+ * @brief Preprocesses input data to comply with specifications of YOLOv4 algorithm.
  * 
  * @param data data to process.
  * @param width image width.
  * @param height image height.
+ * @return preprocessed image data as vector of floats.
  */
-std::vector<float> YOLOv4::preprocess(uint8_t* data, int width, int height) {
+std::vector<float> &YOLOv4::preprocess(uint8_t *const data, int width, int height) {
     org_image_h = height;
     org_image_w = width;
     // Create opencv mat image
@@ -63,19 +65,12 @@ std::vector<float> YOLOv4::preprocess(uint8_t* data, int width, int height) {
     // Swap to RGB order
     cv::cvtColor(padded, padded, cv::COLOR_BGR2RGB);
 
-    cv::Mat image_float;
-    // Convert data to floats
-    //padded.convertTo(image_float, CV_32FC3);
-    //cv::imwrite("../../assets/images/paddedpleaseplease.png", image_float);
-    //std::cout << "Post:float: " << (float) image_float.data[2003] << std::endl;
-
-    std::vector<float> input_tensor_values;
+    // Assign mat value to internal vector
     input_tensor_values.assign(padded.data, padded.data + padded.total() * padded.channels());
-    //std::cout << "before scale: " << input_tensor_values[2003] << std::endl;
-    for (size_t i = 0; i < input_tensor_values.size(); i++) {
+    for (size_t i = 0; i < getInputTensorSize(); i++) {
         input_tensor_values[i] = input_tensor_values[i] / 255.f;
     }
-    //std::cout << "after scale: " << input_tensor_values[2003] << std::endl;
+    // TODO: release padded here?
 
     return input_tensor_values;
 }
@@ -95,21 +90,18 @@ float sigmoid(float value) {
  * @param strides vector of strides for each output layer.
  * @param xyscale vector of xyscale for each output layer.
  * @param threshold threshold to filter boxes based on confidence/score.
- * @return std::vector<BoundingBox*> filtered bounding boxes from model output (all layers).
+ * @return filtered bounding boxes from model output (all layers).
  */
-std::vector<BoundingBox*> YOLOv4::getBoundingBoxes(std::vector<Ort::Value> &model_output, std::vector<float> anchors, std::vector<float> strides, std::vector<float> xyscale, float threshold) {
+std::vector<BoundingBox*> YOLOv4::getBoundingBoxes(std::vector<Ort::Value> &model_output, std::vector<float> &anchors, std::vector<float> &strides, std::vector<float> &xyscale, float threshold) {
     std::vector<BoundingBox*> bboxes;
-    auto dw = (INPUT_WIDTH - resize_ratio * org_image_w) / 2;
-    auto dh = (INPUT_HEIGHT - resize_ratio * org_image_h) / 2;
-
-    size_t num_output_nodes = 3;
+    float dw = (INPUT_WIDTH - resize_ratio * org_image_w) / 2;
+    float dh = (INPUT_HEIGHT - resize_ratio * org_image_h) / 2;
 
     // Iterate through output layers
-    for (size_t layer = 0; layer < num_output_nodes; layer++) {
+    for (size_t layer = 0; layer < model_output.size(); layer++) {
+        // Layer data
         float *layer_output = model_output[layer].GetTensorMutableData<float>();
         auto layer_shape = model_output[layer].GetTensorTypeAndShapeInfo().GetShape();
-        
-        // Layer data
         auto grid_size = layer_shape[1];
         auto anchors_per_cell = layer_shape[3];
         auto features_per_anchor = layer_shape[4];
@@ -214,6 +206,7 @@ bool compareBoxScore(BoundingBox* b1, BoundingBox* b2) {
 
 /**
  * @brief Perform non-maximal suppression (nms) on vector of bounding boxes.
+ * NOTE: this version computes nms per class.
  * 
  * @param bboxes vector of bounding boxes to perform nms on.
  * @param threshold IOU threshold for nms.
@@ -263,6 +256,7 @@ void YOLOv4::loadClassColors() {
     // Convert HSV to RGB
     // Saturation and Value will always be 1
     // Hue depends on class index
+    class_colors = std::vector<cv::Scalar>(NUM_CLASSES);
     for (int i = 0; i < NUM_CLASSES; i++) {
         float h = ((1.0f * i) / NUM_CLASSES) * 360;
         float x = 1.0f - std::abs(std::fmod(h / 60, 2) - 1);
