@@ -33,6 +33,9 @@ class YOLOv4 : public ObjectDetectionModel {
         float dw;
         float dh;
 
+        float score_threshold;
+        float nms_threshold;
+
         std::vector<cv::Scalar> class_colors;
         std::vector<float> input_tensor_values;
 
@@ -40,22 +43,25 @@ class YOLOv4 : public ObjectDetectionModel {
         std::vector<float> strides;
         std::vector<float> xyscale;
 
+        std::vector<std::list<BoundingBox*>> class_boxes;
+        std::vector<BoundingBox*> filtered_boxes;
+
         void loadClassColors();
         cv::Mat padImage(cv::Mat const &image);
         std::pair<int, float> findMaxClass(float *layer_output, long offset);
         bool transformCoordinates(std::vector<float> &coords, int layer, int row, int col, int anchor);
-        std::vector<BoundingBox*> getBoundingBoxes(std::vector<Ort::Value> &model_output, float threshold);
+        void getBoundingBoxes(std::vector<Ort::Value> &model_output, float threshold);
         float bbox_iou(BoundingBox *bbox1, BoundingBox *bbox2);
-        std::vector<BoundingBox*> nms(std::vector<BoundingBox*> bboxes, float threshold);
-        void writeBoundingBoxes(std::vector<BoundingBox*> bboxes, std::vector<std::string> class_names);
+        void nms(float threshold);
+        void writeBoundingBoxes(std::vector<std::string> class_names);
 
     public:
         ~YOLOv4();
-        YOLOv4();
+        YOLOv4(float = 0.25, float = 0.213);
         size_t getNumClasses();
         size_t getInputTensorSize();
         std::vector<float> &preprocess(uint8_t *const data, int width, int height);
-        uint8_t* postprocess(std::vector<Ort::Value> &model_output, std::vector<std::string> class_labels);
+        uint8_t* postprocess(std::vector<Ort::Value> &model_output, std::vector<std::string> &class_labels);
 };
 
 #endif
