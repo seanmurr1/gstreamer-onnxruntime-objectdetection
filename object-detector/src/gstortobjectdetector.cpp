@@ -222,15 +222,19 @@ gst_ortobjectdetector_get_property (GObject * object, guint prop_id,
 static gboolean
 gst_ortobjectdetector_ort_setup (GstBaseTransform *base) {
   g_print ("Attempting ORT setup\n");
+  g_print ("HERE1\n");
 
   Gstortobjectdetector *self = GST_ORTOBJECTDETECTOR (base);
   auto ort_client = (OrtClient*) self->ort_client;
+  g_print ("HERE2\n");
 
   GST_OBJECT_LOCK (self);
   if (ort_client->isInitialized()) {
+    g_print ("Already initialized\n");
     GST_OBJECT_UNLOCK (self);
     return TRUE;
   }
+  g_print ("HERE3\n");
 
   if (!self->model_file || !self->label_file) {
     GST_OBJECT_UNLOCK (self);

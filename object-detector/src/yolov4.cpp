@@ -3,10 +3,11 @@
 YOLOv4::YOLOv4(float score_threshold, float nms_threshold) : score_threshold(score_threshold), nms_threshold(nms_threshold) {
     loadClassColors();
     input_tensor_values = std::vector<float>(getInputTensorSize());
-    class_boxes = std::vector<std::list<BoundingBox*>>(NUM_CLASSES);
+    //class_boxes = std::vector<std::list<BoundingBox*>>(NUM_CLASSES);
     anchors = std::vector<float>{12.f,16.f, 19.f,36.f, 40.f,28.f, 36.f,75.f, 76.f,55.f, 72.f,146.f, 142.f,110.f, 192.f,243.f, 459.f,401.f};
     strides = std::vector<float>{8.f, 16.f, 32.f};
     xyscale = std::vector<float>{1.2, 1.1, 1.05};
+    padded_image = cv::Mat(INPUT_HEIGHT, INPUT_WIDTH, CV_8UC3, cv::Scalar(128, 128, 128));
 }
 
 ObjectDetectionModel::~ObjectDetectionModel() { }
@@ -26,25 +27,20 @@ size_t YOLOv4::getInputTensorSize() {
  * Preserves aspect ratio. Pad with grey (128, 128, 128) pixels.
  * 
  * @param image image to pad.
- * @return padded image.
  */
-cv::Mat YOLOv4::padImage(cv::Mat const &image) {
+void YOLOv4::padImage(cv::Mat const &image) {
     resize_ratio = std::min(INPUT_WIDTH / (org_image_w * 1.0f), INPUT_HEIGHT / (org_image_h * 1.0f));
     // New dimensions to preserve aspect ratio
     int nw = resize_ratio * org_image_w;
     int nh = resize_ratio * org_image_h;
-
     // Padding on either side
     dw = (INPUT_WIDTH - nw) / 2.0f;
     dh = (INPUT_HEIGHT - nh) / 2.0f;
+    // Resize original image into padded image
+    padded_image = cv::Scalar(128, 128, 128);
+    //padded_image = cv::Mat(INPUT_HEIGHT, INPUT_WIDTH, CV_8UC3, cv::Scalar(128, 128, 128));
 
-    // TODO: minimize copying
-    //******** resize into rectangle immeidaetely 
-    cv::Mat padded(INPUT_HEIGHT, INPUT_WIDTH, CV_8UC3, cv::Scalar(128, 128, 128));
-    cv::Mat resized;
-    cv::resize(image, resized, cv::Size(std::floor(nw), std::floor(nh)));
-    resized.copyTo(padded(cv::Rect(dw, dh, resized.cols, resized.rows)));
-    return padded;
+    cv::resize(image, padded_image(cv::Rect(dw, dh, std::floor(nw), std::floor(nh))), cv::Size(std::floor(nw), std::floor(nh)));
 }
 
 /**
@@ -63,20 +59,17 @@ std::vector<float> &YOLOv4::preprocess(uint8_t *const data, int width, int heigh
     // NOTE: this does not copy data, simply wraps
     org_image = cv::Mat(image_size, CV_8UC3, data);
     // Pad image 
-    cv::Mat padded = padImage(org_image);
-    cv::imwrite("../../assets/images/paddedIMAGE.png", padded);
+    padImage(org_image);
+    cv::imwrite("../../assets/images/PADDED.png", padded_image);
 
-    // TODO: check about swapping RGB or HWC / transpose
+    // TODO: check about swapping RGB or HWC / transpose****************************
     // Swap to RGB order
-    cv::cvtColor(padded, padded, cv::COLOR_BGR2RGB);
+    // TODO: this may copy, may need to manually swap channels/ordering
+    cv::cvtColor(padded_image, padded_image, cv::COLOR_BGR2RGB);
 
-    //**************************************CHECK MEMORY EFFICIENCY HERE
-    // Possibly just treat mat as vector, scale with loop then retrn mat.data pointer
-
-    // Assign mat value to internal vector and scale (COPIES)
-    input_tensor_values.assign(padded.data, padded.data + padded.total() * padded.channels());
+    // Assign mat values to internal vector and scale (COPIES)
     for (size_t i = 0; i < getInputTensorSize(); i++) {
-        input_tensor_values[i] = input_tensor_values[i] / 255.f;
+        input_tensor_values[i] = (float) padded_image.data[i] / 255.f;
     }
     return input_tensor_values;
 }
@@ -246,29 +239,28 @@ bool compareBoxScore(BoundingBox* b1, BoundingBox* b2) {
  */
 void YOLOv4::nms(float threshold) {
     // Iterate through each class
-    for (int i = 0; i < NUM_CLASSES; i++) {
-        std::list<BoundingBox*> boxes = class_boxes[i];
-        if (boxes.size() == 0) {
+    for (auto &pair : class_boxes) {
+        std::vector<BoundingBox*> boxes = pair.second;
+        if (boxes.empty()) {
             continue;
         }
         // Sort class specific boxes by score in decreasing order 
-        boxes.sort(compareBoxScore);
-        while (boxes.size() > 0) {
+        std::sort(boxes.begin(), boxes.end(), compareBoxScore);
+        while (!boxes.empty()) {
             // Extract box with highest score
             BoundingBox *accepted_box = boxes.front();
             filtered_boxes.push_back(accepted_box);
-            boxes.pop_front();
             // Compare extracted box with all remaining class boxes
-            std::list<BoundingBox*>::iterator i = boxes.begin();
-            while (i != boxes.end()) {
-                BoundingBox *test_box = *i;
+            std::vector<BoundingBox*> safe_boxes;
+            for (int i = 1; i < boxes.size(); i++) {
+                BoundingBox *test_box = boxes[i];
                 if (bbox_iou(accepted_box, test_box) > threshold) {
-                    i = boxes.erase(i);
                     delete test_box;
                 } else {
-                    i++;
+                    safe_boxes.push_back(test_box);
                 }
             }
+            boxes = safe_boxes;
         }
     }
     // Clear class boxes as now all valid, filtered boxes are in filtered_boxes vector
@@ -300,6 +292,7 @@ void YOLOv4::loadClassColors() {
         }
         class_colors[i] = cv::Scalar(r, g, b);
     }
+    class_boxes.clear();
 }
 
 /**
@@ -312,10 +305,6 @@ void YOLOv4::writeBoundingBoxes(std::vector<std::string> class_names) {
     float font_scale = 0.5f;
     int bbox_thick = (int) (0.6f * (org_image_h + org_image_w) / 600.f);
 
-    std::cout << "score threshold: " << score_threshold << std::endl;
-    std::cout << "nms threshold: " << nms_threshold << std::endl;
-
-
     for (size_t i = 0; i < filtered_boxes.size(); i++) {
         // Bounding box information
         BoundingBox *bbox = filtered_boxes[i];
@@ -324,7 +313,7 @@ void YOLOv4::writeBoundingBoxes(std::vector<std::string> class_names) {
         auto c1 = cv::Point(bbox->xmin, bbox->ymin);
         auto c2 = cv::Point(bbox->xmax, bbox->ymax);
 
-        std::cout << "Found " << class_name << " with score " << score << std::endl;
+        std::cout << "Found " << class_name << " (" << bbox->class_index << ") with score " << score << std::endl;
 
         cv::Scalar color = class_colors[bbox->class_index];
         // Place rectangle around bounding box
@@ -348,6 +337,6 @@ uint8_t* YOLOv4::postprocess(std::vector<Ort::Value> &model_output, std::vector<
     getBoundingBoxes(model_output, score_threshold);
     nms(nms_threshold);
     writeBoundingBoxes(class_labels);
-    cv::imwrite("../../assets/images/pleasepleaseplease.png", org_image);
+    cv::imwrite("../../assets/images/POST.png", org_image);
     return org_image.data;
 }

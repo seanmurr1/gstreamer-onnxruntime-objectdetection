@@ -29,6 +29,7 @@ class YOLOv4 : public ObjectDetectionModel {
         int org_image_w;
         int org_image_h;
         cv::Mat org_image;
+        cv::Mat padded_image;
         float resize_ratio;
         float dw;
         float dh;
@@ -43,11 +44,11 @@ class YOLOv4 : public ObjectDetectionModel {
         std::vector<float> strides;
         std::vector<float> xyscale;
 
-        std::vector<std::list<BoundingBox*>> class_boxes;
+        std::unordered_map<int, std::vector<BoundingBox*>> class_boxes;
         std::vector<BoundingBox*> filtered_boxes;
 
         void loadClassColors();
-        cv::Mat padImage(cv::Mat const &image);
+        void padImage(cv::Mat const &image);
         std::pair<int, float> findMaxClass(float *layer_output, long offset);
         bool transformCoordinates(std::vector<float> &coords, int layer, int row, int col, int anchor);
         void getBoundingBoxes(std::vector<Ort::Value> &model_output, float threshold);
