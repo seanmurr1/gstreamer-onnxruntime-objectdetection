@@ -44,7 +44,7 @@ class YOLOv4 : public ObjectDetectionModel {
         std::vector<float> strides;
         std::vector<float> xyscale;
 
-        std::unordered_map<int, std::vector<BoundingBox*>> class_boxes;
+        std::vector<std::list<BoundingBox*>> class_boxes;
         std::vector<BoundingBox*> filtered_boxes;
 
         void loadClassColors();
@@ -54,7 +54,7 @@ class YOLOv4 : public ObjectDetectionModel {
         void getBoundingBoxes(std::vector<Ort::Value> &model_output, float threshold);
         float bbox_iou(BoundingBox *bbox1, BoundingBox *bbox2);
         void nms(float threshold);
-        void writeBoundingBoxes(std::vector<std::string> class_names);
+        void writeBoundingBoxes(std::vector<std::string> &class_names);
 
     public:
         ~YOLOv4();

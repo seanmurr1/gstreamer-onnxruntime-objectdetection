@@ -11,13 +11,11 @@ int main(int argc, char* argv[]) {
     
     cv::Mat input_image = cv::imread("../../assets/images/bike1.png");
     cv::Mat input_image2 = cv::imread("../../assets/images/dog.jpeg");
-
-    std::vector<int> dims{input_image.rows, input_image.cols};
-    cv::Mat trans = cv::Mat(dims, CV_8UC3, input_image.data);
-    cv::imwrite("../../assets/images/testconvert.png", trans);
+    cv::Mat input_image3 = cv::imread("../../assets/images/dog2.jpg");
 
     auto output = ort_client.runModel(input_image.data, input_image.cols, input_image.rows);
     auto output2 = ort_client.runModel(input_image2.data, input_image2.cols, input_image2.rows);
+    auto output3 = ort_client.runModel(input_image3.data, input_image3.cols, input_image3.rows);
 
     return 0;
 }

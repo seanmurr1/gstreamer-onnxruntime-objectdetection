@@ -3,7 +3,13 @@
 #include "yolov4.h"
 
 OrtClient::~OrtClient() {
-    //TODO
+    for (const char* node_name : input_node_names) {
+        allocator.Free(const_cast<void*>(reinterpret_cast<const void*>(node_name)));
+    }
+    for (const char* node_name : output_node_names) {
+        allocator.Free(const_cast<void*>(reinterpret_cast<const void*>(node_name)));
+    }
+    
     delete model;
 }
 
@@ -121,7 +127,10 @@ uint8_t* OrtClient::runModel(uint8_t *data, int width, int height) {
     assert(input_tensor.IsTensor());
 
     std::vector<Ort::Value> model_output = session->Run(Ort::RunOptions{nullptr}, input_node_names.data(), &input_tensor, num_input_nodes, output_node_names.data(), num_output_nodes);
-    // TODO: memory cleanup??
-
-    return model->postprocess(model_output, labels);
+    //input_tensor.release(); // ?
+    uint8_t *processed_data = model->postprocess(model_output, labels);
+    for (size_t i = 0; i < model_output.size(); i++) {
+        //model_output[i].release();
+    }
+    return processed_data;
 }
