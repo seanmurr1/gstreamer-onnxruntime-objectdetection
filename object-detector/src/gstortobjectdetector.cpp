@@ -44,28 +44,30 @@
 
 
 #include "gstortobjectdetector.h"
-
 #include "ortclient.h"
 
 GST_DEBUG_CATEGORY_STATIC (gst_ortobjectdetector_debug);
 #define GST_CAT_DEFAULT gst_ortobjectdetector_debug
 
-/* Filter signals and args */
-enum
-{
-  /* FILL ME */
-  LAST_SIGNAL
-};
-
 enum
 {
   PROP_0,
-  PROP_SILENT,
-
   PROP_MODEL_FILE,
-  PROP_LABEL_FILE
-  // TODO: add execution provider, optimzation level, etc.
+  PROP_LABEL_FILE,
+  PROP_OPTIMIZATION_LEVEL,
+  PROP_EXECUTION_PROVIDER,
+  PROP_SCORE_THRESHOLD,
+  PROP_NMS_THRESHOLD,
+  PROP_DETECTION_MODEL
+  // TODO: add image format?
 };
+
+// Default prop values
+#define DEFAULT_SCORE_THRESHOLD 0.25f
+#define DEFAULT_NMS_THRESHOLD 0.213f
+#define DEFAULT_EXECUTION_PROVIDER GST_ORT_EXECUTION_PROVIDER_CPU
+#define DEFAULT_OPTIMIZATION_LEVEL GST_ORT_OPTIMIZATION_LEVEL_ENABLE_EXTENDED
+#define DEFAULT_MODEL GST_ORT_DETECTION_MODEL_YOLOV4
 
 /* the capabilities of the inputs and outputs.
  *
@@ -111,17 +113,33 @@ gst_ortobjectdetector_class_init (GstortobjectdetectorClass * klass)
   gobject_class->set_property = gst_ortobjectdetector_set_property;
   gobject_class->get_property = gst_ortobjectdetector_get_property;
 
-  g_object_class_install_property (gobject_class, PROP_SILENT,
-      g_param_spec_boolean ("silent", "Silent", "Produce verbose output ?",
-          FALSE, G_PARAM_READWRITE));
-
   g_object_class_install_property (gobject_class, PROP_MODEL_FILE,
       g_param_spec_string ("model-file", "ONNX model file", "Path to ONNX model file",
           NULL, (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
   
-g_object_class_install_property (gobject_class, PROP_LABEL_FILE,
+  g_object_class_install_property (gobject_class, PROP_LABEL_FILE,
       g_param_spec_string ("label-file", "Class label file", "Path to class label file for ONNX model",
           NULL, (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
+
+  g_object_class_install_property (gobject_class, PROP_SCORE_THRESHOLD,
+      g_param_spec_float ("score-threshold", "Score threshold", "Threshold for filtering bounding boxes by score",
+          0.0, 1.0, DEFAULT_SCORE_THRESHOLD, (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
+  
+  g_object_class_install_property (gobject_class, PROP_NMS_THRESHOLD,
+      g_param_spec_float ("nms-threshold", "NMS threshold", "Threshold for filtering bounding boxes during non-maximal suppresion",
+          0.0, 1.0, DEFAULT_NMS_THRESHOLD, (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
+  
+  g_object_class_install_property (gobject_class, PROP_OPTIMIZATION_LEVEL,
+      g_param_spec_enum ("optimization-level", "Optimization level", "ORT optimization level",
+          GST_TYPE_ORT_OPTIMIZATION_LEVEL, DEFAULT_OPTIMIZATION_LEVEL, (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
+  
+  g_object_class_install_property (gobject_class, PROP_EXECUTION_PROVIDER,
+      g_param_spec_enum ("execution-provider", "Execution provider", "ORT execution provider",
+          GST_TYPE_ORT_EXECUTION_PROVIDER, DEFAULT_EXECUTION_PROVIDER, (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
+  
+  g_object_class_install_property (gobject_class, PROP_DETECTION_MODEL,
+      g_param_spec_enum ("detection-model", "Detection model", "Object detection model",
+          GST_TYPE_ORT_DETECTION_MODEL, DEFAULT_MODEL, (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
 
   gst_element_class_set_details_simple (gstelement_class,
       "ortobjectdetector",
@@ -144,18 +162,18 @@ g_object_class_install_property (gobject_class, PROP_LABEL_FILE,
       "Template ortobjectdetector");
 }
 
+/*****************************************************
+// TODO: link transform caps in class init?
+// TODO: finalize function
+*****************************************************/
+
 /* initialize the new element
  * initialize instance structure
  */
 static void
 gst_ortobjectdetector_init (Gstortobjectdetector * self)
 {
-  g_print ("Init Function:\n");
-  self->silent = FALSE;
   self->ort_client = new OrtClient();
-  g_print ("Created client\n");
-  g_print ("model-file: %s\n", self->model_file);
-  g_print ("label-file: %s\n", self->label_file);
 }
 
 static void
@@ -166,9 +184,6 @@ gst_ortobjectdetector_set_property (GObject * object, guint prop_id,
   const gchar *filename;
 
   switch (prop_id) {
-    case PROP_SILENT:
-      self->silent = g_value_get_boolean (value);
-      break;
     case PROP_MODEL_FILE:
       filename = g_value_get_string(value);
       if (filename && g_file_test(filename, (GFileTest) (G_FILE_TEST_EXISTS | G_FILE_TEST_IS_REGULAR))) {
@@ -191,6 +206,21 @@ gst_ortobjectdetector_set_property (GObject * object, guint prop_id,
         gst_base_transform_set_passthrough(GST_BASE_TRANSFORM (self), TRUE);
       }
       break;
+    case PROP_SCORE_THRESHOLD:
+      self->score_threshold = g_value_get_float(value);
+      break;
+    case PROP_NMS_THRESHOLD:
+      self->nms_threshold = g_value_get_float(value);
+      break;
+    case PROP_OPTIMIZATION_LEVEL:
+      self->optimization_level = (GstOrtOptimizationLevel) g_value_get_enum (value);
+      break;
+    case PROP_EXECUTION_PROVIDER:
+      self->execution_provider = (GstOrtExecutionProvider) g_value_get_enum (value);
+      break;
+    case PROP_DETECTION_MODEL:
+      self->detection_model = (GstOrtDetectionModel) g_value_get_enum (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -204,14 +234,26 @@ gst_ortobjectdetector_get_property (GObject * object, guint prop_id,
   Gstortobjectdetector *self = GST_ORTOBJECTDETECTOR (object);
 
   switch (prop_id) {
-    case PROP_SILENT:
-      g_value_set_boolean (value, self->silent);
-      break;
     case PROP_MODEL_FILE:
       g_value_set_string(value, self->model_file);
       break;
     case PROP_LABEL_FILE:
       g_value_set_string(value, self->label_file);
+      break;
+    case PROP_SCORE_THRESHOLD:
+      g_value_set_float(value, self->score_threshold);
+      break;
+    case PROP_NMS_THRESHOLD:
+      g_value_set_float(value, self->nms_threshold);
+      break;
+    case PROP_OPTIMIZATION_LEVEL:
+      g_value_set_enum(value, self->optimization_level);
+      break;
+    case PROP_EXECUTION_PROVIDER:
+      g_value_set_enum(value, self->execution_provider);
+      break;
+    case PROP_DETECTION_MODEL:
+      g_value_set_enum(value, self->detection_model);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -282,9 +324,6 @@ gst_ortobjectdetector_transform_ip (GstBaseTransform * base, GstBuffer * outbuf)
 
   if (GST_CLOCK_TIME_IS_VALID (GST_BUFFER_TIMESTAMP (outbuf)))
     gst_object_sync_values (GST_OBJECT (self), GST_BUFFER_TIMESTAMP (outbuf));
-
-  if (self->silent == FALSE)
-    g_print ("I'm plugged, therefore I'm in.\n");
 
   /* FIXME: do something interesting here.  This simply copies the source
    * to the destination. */

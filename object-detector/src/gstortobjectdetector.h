@@ -26,6 +26,9 @@
 #include <gst/gst.h>
 #include <gst/base/gstbasetransform.h>
 
+#include "gstortelement.h"
+//#include <glib.h>
+
 G_BEGIN_DECLS
 
 #define GST_TYPE_ORTOBJECTDETECTOR (gst_ortobjectdetector_get_type())
@@ -38,6 +41,13 @@ struct _Gstortobjectdetector {
   gchar *model_file;
   gchar *label_file;
   gpointer ort_client;
+
+  gfloat score_threshold;
+  gfloat nms_threshold;
+
+  GstOrtOptimizationLevel optimization_level;
+  GstOrtExecutionProvider execution_provider;
+  GstOrtDetectionModel detection_model;
 
   gboolean silent;
 };

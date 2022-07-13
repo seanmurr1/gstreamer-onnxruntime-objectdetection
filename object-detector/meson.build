@@ -34,7 +34,8 @@ if onnxrt_dep.found()
   gstortobjectdetector_sources = [
     'src/gstortobjectdetector.cpp',
     'src/ortclient.cpp',
-    'src/yolov4.cpp'
+    'src/yolov4.cpp',
+    'src/gstortelement.c'
     ]
 
   driver_sources = [

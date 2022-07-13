@@ -4,6 +4,8 @@
 #include <onnxruntime_cxx_api.h>
 #include "objectdetectionmodel.h"
 
+//#include "gstortelement.h"
+
 class OrtClient {
     private:
         ObjectDetectionModel* model;
@@ -34,6 +36,7 @@ class OrtClient {
 
     public:
         ~OrtClient();
+        //bool init(std::string model_path, std::string label_path, GstOrtOptimizationLevel = GST_ORT_OPTIMIZATION_LEVEL_ENABLE_EXTENDED, GstOrtExecutionProvider = GST_ORT_EXECUTION_PROVIDER_CPU);
         bool init(std::string model_path, std::string label_path);
         bool isInitialized();
         uint8_t* runModel(uint8_t *data, int width, int height);
