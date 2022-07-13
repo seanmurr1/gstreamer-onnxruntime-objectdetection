@@ -1,5 +1,5 @@
-#ifndef GSTORTELEMENT_H
-#define GSTORTELEMENT_H
+#ifndef __GST_ORT_ELEMENT_H__
+#define __GST_ORT_ELEMENT_H__
 
 #include <gst/gst.h>
 

@@ -1,10 +1,9 @@
-#ifndef ORTCLIENT_H
-#define ORTCLIENT_H
+#ifndef __ORT_CLIENT_H__
+#define __ORT_CLIENT_H__
 
 #include <onnxruntime_cxx_api.h>
 #include "objectdetectionmodel.h"
-
-//#include "gstortelement.h"
+#include "gstortelement.h"
 
 class OrtClient {
     private:
@@ -30,16 +29,14 @@ class OrtClient {
         bool check_init;
 
         bool loadClassLabels();
-        void setOrtEnv();
         void setModelInputOutput();
-        void createSession(); // TODO add optimization level and exeuction provider
+        bool createSession(GstOrtOptimizationLevel opti_level, GstOrtExecutionProvider provider); 
 
     public:
         ~OrtClient();
-        //bool init(std::string model_path, std::string label_path, GstOrtOptimizationLevel = GST_ORT_OPTIMIZATION_LEVEL_ENABLE_EXTENDED, GstOrtExecutionProvider = GST_ORT_EXECUTION_PROVIDER_CPU);
-        bool init(std::string model_path, std::string label_path);
+        bool init(std::string model_path, std::string label_path, GstOrtOptimizationLevel = GST_ORT_OPTIMIZATION_LEVEL_ENABLE_EXTENDED, GstOrtExecutionProvider = GST_ORT_EXECUTION_PROVIDER_CPU, GstOrtDetectionModel = GST_ORT_DETECTION_MODEL_YOLOV4);
         bool isInitialized();
-        uint8_t* runModel(uint8_t *data, int width, int height);
+        uint8_t* runModel(uint8_t *data, int width, int height, float = 0.25, float = 0.213);
 };
 
 #endif

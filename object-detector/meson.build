@@ -57,11 +57,11 @@ if onnxrt_dep.found()
 
   executable('driver',
     driver_sources,
-    c_args : [],
+    c_args : [plugin_c_args],
     cpp_args : onnxrt_dep_args,
     link_args : [],
     include_directories : [onnxrt_includes],
-    dependencies : [onnxrt_dep, opencv_dep]
+    dependencies : [gst_dep, gstbase_dep, gstvideo_dep, onnxrt_dep, opencv_dep]
   )
 
     # pkgconfig.generate(gstortobjectdetector, install_dir : plugins_pkgconfig_install_dir)

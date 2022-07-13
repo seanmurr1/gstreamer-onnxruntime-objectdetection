@@ -67,7 +67,7 @@ enum
 #define DEFAULT_NMS_THRESHOLD 0.213f
 #define DEFAULT_EXECUTION_PROVIDER GST_ORT_EXECUTION_PROVIDER_CPU
 #define DEFAULT_OPTIMIZATION_LEVEL GST_ORT_OPTIMIZATION_LEVEL_ENABLE_EXTENDED
-#define DEFAULT_MODEL GST_ORT_DETECTION_MODEL_YOLOV4
+#define DEFAULT_DETECTION_MODEL GST_ORT_DETECTION_MODEL_YOLOV4
 
 /* the capabilities of the inputs and outputs.
  *
@@ -139,7 +139,7 @@ gst_ortobjectdetector_class_init (GstortobjectdetectorClass * klass)
   
   g_object_class_install_property (gobject_class, PROP_DETECTION_MODEL,
       g_param_spec_enum ("detection-model", "Detection model", "Object detection model",
-          GST_TYPE_ORT_DETECTION_MODEL, DEFAULT_MODEL, (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
+          GST_TYPE_ORT_DETECTION_MODEL, DEFAULT_DETECTION_MODEL, (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
 
   gst_element_class_set_details_simple (gstelement_class,
       "ortobjectdetector",
@@ -174,6 +174,11 @@ static void
 gst_ortobjectdetector_init (Gstortobjectdetector * self)
 {
   self->ort_client = new OrtClient();
+  self->score_threshold = DEFAULT_SCORE_THRESHOLD;
+  self->nms_threshold = DEFAULT_NMS_THRESHOLD;
+  self->optimization_level = DEFAULT_OPTIMIZATION_LEVEL;
+  self->execution_provider = DEFAULT_EXECUTION_PROVIDER;
+  self->detection_model = DEFAULT_DETECTION_MODEL;
 }
 
 static void
@@ -280,8 +285,10 @@ gst_ortobjectdetector_ort_setup (GstBaseTransform *base) {
 
   g_print ("model-file: %s\n", self->model_file);
   g_print ("label-file: %s\n", self->label_file);
+  g_print ("Opti: %d\n", self->optimization_level);
+  g_print ("Exec: %d\n", self->execution_provider);
   g_print ("Initializing...\n");
-  auto res = ort_client->init(self->model_file, self->label_file);
+  auto res = ort_client->init(self->model_file, self->label_file, self->optimization_level, self->execution_provider);
   g_print ("Initialized: %s\n", res ? "true" : "false");
   GST_OBJECT_UNLOCK (self);
   return res;
@@ -343,7 +350,7 @@ gst_ortobjectdetector_transform_ip (GstBaseTransform * base, GstBuffer * outbuf)
 
   if (gst_buffer_map(outbuf, &info, GST_MAP_READWRITE)) {
     // This should modify data in place?
-    auto res = ort_client->runModel(info.data, vmeta->width, vmeta->height);
+    auto res = ort_client->runModel(info.data, vmeta->width, vmeta->height, self->score_threshold, self->nms_threshold);
     gst_buffer_unmap (outbuf, &info);
   }
 

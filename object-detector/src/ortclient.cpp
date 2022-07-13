@@ -2,6 +2,11 @@
 #include "ortclient.h"
 #include "yolov4.h"
 
+#include <providers/cpu/cpu_provider_factory.h>
+#ifdef GST_ML_ONNX_RUNTIME_HAVE_CUDA
+#include <providers/cuda/cuda_provider_factory.h>
+#endif
+
 OrtClient::~OrtClient() {
     for (const char* node_name : input_node_names) {
         allocator.Free(const_cast<void*>(reinterpret_cast<const void*>(node_name)));
@@ -18,14 +23,46 @@ bool OrtClient::isInitialized() {
 }
 
 /**
- * @brief Set up ONNX Runtime environment and set session options (e.g. graph optimaztion level).
+ * @brief Set up ONNX Runtime environment, session options, and creates new session.
  */
-void OrtClient::setOrtEnv() {
+bool OrtClient::createSession(GstOrtOptimizationLevel opti_level, GstOrtExecutionProvider provider) {
     env = std::make_unique<Ort::Env>(Ort::Env(ORT_LOGGING_LEVEL_WARNING, "test"));
-
-    // TODO: add customizability
     session_options.SetInterOpNumThreads(1);
-    session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_EXTENDED);
+
+    switch (opti_level) {
+        case GST_ORT_OPTIMIZATION_LEVEL_DISABLE_ALL:
+            session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_DISABLE_ALL);
+            break;
+        case GST_ORT_OPTIMIZATION_LEVEL_ENABLE_BASIC:
+            session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_BASIC);
+            break;
+        case GST_ORT_OPTIMIZATION_LEVEL_ENABLE_EXTENDED:
+            session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_EXTENDED);
+            break;
+        case GST_ORT_OPTIMIZATION_LEVEL_ENABLE_ALL:
+            session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+            break;
+        default:
+            session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_EXTENDED);
+            break;
+    }
+
+    switch (provider) {
+        case GST_ORT_EXECUTION_PROVIDER_CUDA:
+#ifdef GST_ML_ONNX_RUNTIME_HAVE_CUDA
+            Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_CUDA(session_options, 0));
+#else 
+            return false;
+#endif
+            break;
+        case GST_ORT_EXECUTION_PROVIDER_CPU:
+            break;
+        default:
+            break;
+    }
+
+    session = std::make_unique<Ort::Session>(Ort::Session(*env, onnx_model_path.c_str(), session_options));
+    return true;
 }
 
 /**
@@ -64,14 +101,6 @@ void OrtClient::setModelInputOutput() {
     }
 }
 
-/**
- * @brief Creates ONNX Runtime session from existing environment.
- * Uses environment and session options set up in `setOrtEnv`.
- */
-void OrtClient::createSession() {
-    session = std::make_unique<Ort::Session>(Ort::Session(*env, onnx_model_path.c_str(), session_options));
-}
-
 bool OrtClient::loadClassLabels() {
     size_t num_classes = model->getNumClasses();
     labels = std::vector<std::string>(num_classes);
@@ -95,13 +124,21 @@ bool OrtClient::loadClassLabels() {
  * @return true if setup was successful.
  * @return false if setup failed.
  */
-bool OrtClient::init(std::string model_path, std::string label_path) {
+bool OrtClient::init(std::string model_path, std::string label_path, GstOrtOptimizationLevel opti_level, GstOrtExecutionProvider provider, GstOrtDetectionModel detection_model) {
     onnx_model_path = model_path;
     class_labels_path = label_path;
-    // TODO: add ability to change model
-    model = new YOLOv4();
-    setOrtEnv();
-    createSession();
+
+    switch (detection_model) {
+        case GST_ORT_DETECTION_MODEL_YOLOV4:
+            model = new YOLOv4();
+            break;
+        default:
+            model = new YOLOv4();
+            break;
+    }
+    if (!createSession(opti_level, provider)) {
+        return false;
+    }
     setModelInputOutput();
     //memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
     input_tensor_size = model->getInputTensorSize();
@@ -119,7 +156,7 @@ bool OrtClient::init(std::string model_path, std::string label_path) {
 /**
  * @brief Runs object detection model on input data.
  */
-uint8_t* OrtClient::runModel(uint8_t *data, int width, int height) {
+uint8_t* OrtClient::runModel(uint8_t *data, int width, int height, float score_threshold, float nms_threshold) {
     auto memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
 
     std::vector<float> &input_tensor_values = model->preprocess(data, width, height);
@@ -128,7 +165,7 @@ uint8_t* OrtClient::runModel(uint8_t *data, int width, int height) {
 
     std::vector<Ort::Value> model_output = session->Run(Ort::RunOptions{nullptr}, input_node_names.data(), &input_tensor, num_input_nodes, output_node_names.data(), num_output_nodes);
     //input_tensor.release(); // ?
-    uint8_t *processed_data = model->postprocess(model_output, labels);
+    uint8_t *processed_data = model->postprocess(model_output, labels, score_threshold, nms_threshold);
     for (size_t i = 0; i < model_output.size(); i++) {
         //model_output[i].release();
     }

@@ -1,6 +1,6 @@
 #include "yolov4.h"
 
-YOLOv4::YOLOv4(float score_threshold, float nms_threshold) : score_threshold(score_threshold), nms_threshold(nms_threshold) {
+YOLOv4::YOLOv4() {
     loadClassColors();
     input_tensor_values = std::vector<float>(getInputTensorSize());
     class_boxes = std::vector<std::list<BoundingBox*>>(NUM_CLASSES);
@@ -327,7 +327,7 @@ void YOLOv4::writeBoundingBoxes(std::vector<std::string> &class_names) {
     filtered_boxes.clear();
 }
 
-uint8_t* YOLOv4::postprocess(std::vector<Ort::Value> &model_output, std::vector<std::string> &class_labels) {
+uint8_t* YOLOv4::postprocess(std::vector<Ort::Value> &model_output, std::vector<std::string> &class_labels, float score_threshold, float nms_threshold) {
     getBoundingBoxes(model_output, score_threshold);
     nms(nms_threshold);
     writeBoundingBoxes(class_labels);
