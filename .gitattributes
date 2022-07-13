@@ -1,1 +1,2 @@
 assets/models/yolov4/yolov4.onnx filter=lfs diff=lfs merge=lfs -text
+assets/videos/car_video.mp4 filter=lfs diff=lfs merge=lfs -text
