@@ -294,25 +294,25 @@ gst_ortobjectdetector_ort_setup (GstBaseTransform *base) {
   return res;
 }
 
-// Optional. Given the pad in this direction and the given caps, what caps are allowed on the other pad in this element ?
-static GstCaps *
-gst_ortobjectdetector_transform_caps (GstBaseTransform *base, GstPadDirection direction, GstCaps *caps, GstCaps *filter_caps) {
-  Gstortobjectdetector *self = GST_ORTOBJECTDETECTOR (base);
-  auto ort_client = (OrtClient*) self->ort_client;
+// // Optional. Given the pad in this direction and the given caps, what caps are allowed on the other pad in this element ?
+// static GstCaps *
+// gst_ortobjectdetector_transform_caps (GstBaseTransform *base, GstPadDirection direction, GstCaps *caps, GstCaps *filter_caps) {
+//   Gstortobjectdetector *self = GST_ORTOBJECTDETECTOR (base);
+//   auto ort_client = (OrtClient*) self->ort_client;
 
-  if (!gst_ortobjectdetector_ort_setup(base)) {
-    return NULL;
-  }
+//   if (!gst_ortobjectdetector_ort_setup(base)) {
+//     return NULL;
+//   }
 
-  GST_LOG_OBJECT (self, "Transforming caps %" GST_PTR_FORMAT, caps);
+//   GST_LOG_OBJECT (self, "Transforming caps %" GST_PTR_FORMAT, caps);
 
-  if (gst_base_transform_is_passthrough(base)) {
-    //return gst_caps_ref (caps);
-    return caps;
-  }
+//   if (gst_base_transform_is_passthrough(base)) {
+//     //return gst_caps_ref (caps);
+//     return caps;
+//   }
 
-  return caps;
-}
+//   return caps;
+// }
 
 
 /* GstBaseTransform vmethod implementations */
@@ -349,8 +349,8 @@ gst_ortobjectdetector_transform_ip (GstBaseTransform * base, GstBuffer * outbuf)
   }
 
   if (gst_buffer_map(outbuf, &info, GST_MAP_READWRITE)) {
-    // This should modify data in place?
-    auto res = ort_client->runModel(info.data, vmeta->width, vmeta->height, self->score_threshold, self->nms_threshold);
+    // Modify frame in place
+    ort_client->runModel(info.data, vmeta->width, vmeta->height, self->score_threshold, self->nms_threshold);
     gst_buffer_unmap (outbuf, &info);
   }
 

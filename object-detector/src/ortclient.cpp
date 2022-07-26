@@ -14,8 +14,6 @@ OrtClient::~OrtClient() {
     for (const char* node_name : output_node_names) {
         allocator.Free(const_cast<void*>(reinterpret_cast<const void*>(node_name)));
     }
-    
-    delete model;
 }
 
 bool OrtClient::isInitialized() {
@@ -130,10 +128,12 @@ bool OrtClient::init(std::string model_path, std::string label_path, GstOrtOptim
 
     switch (detection_model) {
         case GST_ORT_DETECTION_MODEL_YOLOV4:
-            model = new YOLOv4();
+            model = std::unique_ptr<ObjectDetectionModel>(new YOLOv4());
+            //model = new YOLOv4();
             break;
         default:
-            model = new YOLOv4();
+            model = std::unique_ptr<ObjectDetectionModel>(new YOLOv4());
+            //model = new YOLOv4();
             break;
     }
     if (!createSession(opti_level, provider)) {
@@ -155,8 +155,9 @@ bool OrtClient::init(std::string model_path, std::string label_path, GstOrtOptim
 
 /**
  * @brief Runs object detection model on input data.
+ * Input data is modified in-place.
  */
-uint8_t* OrtClient::runModel(uint8_t *data, int width, int height, float score_threshold, float nms_threshold) {
+void OrtClient::runModel(uint8_t *data, int width, int height, float score_threshold, float nms_threshold) {
     auto memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
 
     std::vector<float> &input_tensor_values = model->preprocess(data, width, height);
@@ -165,9 +166,8 @@ uint8_t* OrtClient::runModel(uint8_t *data, int width, int height, float score_t
 
     std::vector<Ort::Value> model_output = session->Run(Ort::RunOptions{nullptr}, input_node_names.data(), &input_tensor, num_input_nodes, output_node_names.data(), num_output_nodes);
     //input_tensor.release(); // ?
-    uint8_t *processed_data = model->postprocess(model_output, labels, score_threshold, nms_threshold);
+    model->postprocess(model_output, labels, score_threshold, nms_threshold);
     for (size_t i = 0; i < model_output.size(); i++) {
         //model_output[i].release();
     }
-    return processed_data;
 }

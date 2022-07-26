@@ -41,17 +41,17 @@ class YOLOv4 : public ObjectDetectionModel {
         std::vector<float> strides;
         std::vector<float> xyscale;
 
-        std::vector<std::list<BoundingBox*>> class_boxes;
-        std::vector<BoundingBox*> filtered_boxes;
+        std::vector<std::list<std::unique_ptr<BoundingBox>>> class_boxes;
+        std::vector<std::unique_ptr<BoundingBox>> filtered_boxes;
 
         void loadClassColors();
         void padImage(cv::Mat const &image);
-        std::pair<int, float> findMaxClass(float *layer_output, long offset);
+        std::pair<int, float> findMaxClass(float const *layer_output, long offset);
         bool transformCoordinates(std::vector<float> &coords, int layer, int row, int col, int anchor);
-        void getBoundingBoxes(std::vector<Ort::Value> &model_output, float threshold);
-        float bbox_iou(BoundingBox *bbox1, BoundingBox *bbox2);
+        void getBoundingBoxes(std::vector<Ort::Value> const &model_output, float threshold);
+        float bbox_iou(std::unique_ptr<BoundingBox> const &bbox1, std::unique_ptr<BoundingBox> const &bbox2);
         void nms(float threshold);
-        void writeBoundingBoxes(std::vector<std::string> &class_names);
+        void writeBoundingBoxes(std::vector<std::string> const &class_names);
 
     public:
         ~YOLOv4();
@@ -59,7 +59,7 @@ class YOLOv4 : public ObjectDetectionModel {
         size_t getNumClasses();
         size_t getInputTensorSize();
         std::vector<float> &preprocess(uint8_t *const data, int width, int height);
-        uint8_t* postprocess(std::vector<Ort::Value> &model_output, std::vector<std::string> &class_labels, float score_threshold, float nms_threshold);
+        void postprocess(std::vector<Ort::Value> const &model_output, std::vector<std::string> const &class_labels, float score_threshold, float nms_threshold);
 };
 
 #endif
