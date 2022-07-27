@@ -1,3 +1,7 @@
+# NOTE
+This README is cloned from a GStreamer plugin boilerplate repo. It will be updated shortly
+to reference this repo
+
 # GStreamer template repository
 
 This git module contains template code for possible GStreamer projects.
