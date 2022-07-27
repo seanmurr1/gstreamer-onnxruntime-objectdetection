@@ -48,20 +48,23 @@ void YOLOv4::padImage(cv::Mat const &image) {
  * @param data data to process.
  * @param width image width.
  * @param height image height.
+ * @param is_rgb is image RGB or BGR format.
  * @return preprocessed image data as vector of floats.
  */
-std::vector<float> &YOLOv4::preprocess(uint8_t *const data, int width, int height) {
+std::vector<float> &YOLOv4::preprocess(uint8_t *const data, int width, int height, bool rgb) {
     org_image_h = height;
     org_image_w = width;
-    // Create opencv mat image
-    std::vector<int> image_size{height, width};
+    is_rgb = rgb;
+    // Wrap opencv mat image
+    std::vector<int> image_size{org_image_h, org_image_w};
     // NOTE: this does not copy data, simply wraps
     org_image = cv::Mat(image_size, CV_8UC3, data);
     // Pad image 
     padImage(org_image);
-    // Change to RGB ordering if needed
-    cv::cvtColor(padded_image, padded_image, cv::COLOR_BGR2RGB);
-
+    // Change from BGR to RGB ordering if needed
+    if (!is_rgb) {
+        cv::cvtColor(padded_image, padded_image, cv::COLOR_BGR2RGB);
+    }
     // Assign mat values to internal vector and scale (COPIES)
     for (size_t i = 0; i < getInputTensorSize(); i++) {
         input_tensor_values[i] = (float) padded_image.data[i] / 255.f;

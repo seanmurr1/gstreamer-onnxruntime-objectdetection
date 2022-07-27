@@ -235,6 +235,12 @@ GST_START_TEST(test_supported_format_video_rgb)
 }
 GST_END_TEST;
 
+GST_START_TEST(test_supported_format_video_bgr)
+{
+  test_supported_format(gst_caps_new_simple("video/x-raw", "format", G_TYPE_STRING, "BGR", NULL));
+}
+GST_END_TEST;
+
 Suite *gst_ortobjectdetector_suite(void) {
   Suite *s = suite_create("GstOrtObjectDetector");
   TCase *supported_formats = tcase_create("Supported Formats");
@@ -250,6 +256,8 @@ Suite *gst_ortobjectdetector_suite(void) {
 
   tcase_set_timeout(supported_formats, timeout);
   tcase_add_test(supported_formats, test_supported_format_video_rgb);
+  tcase_add_test(supported_formats, test_supported_format_video_bgr);
+
 
   suite_add_tcase(s, supported_formats);
   return s;

@@ -174,20 +174,43 @@ bool OrtClient::init(std::string model_path, std::string label_path, GstOrtOptim
  * @param data input image data.
  * @param width image width.
  * @param height image height.
+ * @param rgb is image RGB or BGR format.
  * @param score_threshold score threshold when filtering bounding boxes.
  * @param nms_threshold threshold for non-maximal suppression and IOU.
  */
-void OrtClient::runModel(uint8_t *const data, int width, int height, float score_threshold, float nms_threshold) {
+void OrtClient::runModel(uint8_t *const data, int width, int height, bool rgb, float score_threshold, float nms_threshold) {
     if (!check_init) {
-        std::cout << "Unable to run inference when ORT client has not been initialized." << std::endl;
+        std::cout << "Unable to run inference when ORT client has not been initialized!" << std::endl;
         return;
     }
-    
     auto memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
-    std::vector<float> &input_tensor_values = model->preprocess(data, width, height);
+    std::vector<float> &input_tensor_values = model->preprocess(data, width, height, rgb);
     Ort::Value input_tensor = Ort::Value::CreateTensor<float>(memory_info, input_tensor_values.data(), input_tensor_size, input_node_dims[0].data(), input_node_dims[0].size());
     assert(input_tensor.IsTensor());
 
     std::vector<Ort::Value> model_output = session->Run(Ort::RunOptions{nullptr}, input_node_names.data(), &input_tensor, num_input_nodes, output_node_names.data(), num_output_nodes);
     model->postprocess(model_output, labels, score_threshold, nms_threshold);
+}
+
+/**
+ * @brief Runs object detection model on input data.
+ * Input data is modified in-place.
+ * 
+ * @param data input image data.
+ * @param vmeta GST video meta.
+ * @param score_threshold score threshold when filtering bounding boxes.
+ * @param nms_threshold threshold for non-maximal suppression and IOU.
+ */
+void OrtClient::runModel(uint8_t *const data, GstVideoMeta *vmeta, float score_threshold, float nms_threshold) {
+    switch (vmeta->format) {
+        case GST_VIDEO_FORMAT_RGB:
+            runModel(data, vmeta->width, vmeta->height, true, score_threshold, nms_threshold);
+            break;
+        case GST_VIDEO_FORMAT_BGR:
+            runModel(data, vmeta->width, vmeta->height, false, score_threshold, nms_threshold);
+            break; 
+        default:
+            std::cout << "Unable to recognize color format!" << std::endl;
+            break;
+    }
 }

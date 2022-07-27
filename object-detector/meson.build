@@ -39,10 +39,10 @@ if onnxrt_dep.found()
     'src/gstortelement.c'
     ]
 
-  driver_sources = [
+  ortdriver_sources = [
     'src/yolov4.cpp',
     'src/ortclient.cpp',
-    'src/driver.cpp'
+    'examples/ort-driver.cpp'
   ]
 
   gstortobjectdetector = library('gstortobjectdetector',
@@ -56,8 +56,8 @@ if onnxrt_dep.found()
     install_dir : plugins_install_dir,
     )
 
-  executable('driver',
-    driver_sources,
+  executable('ort-driver',
+    ortdriver_sources,
     c_args : [plugin_c_args],
     cpp_args : onnxrt_dep_args,
     link_args : [],
@@ -65,8 +65,8 @@ if onnxrt_dep.found()
     dependencies : [gst_dep, gstbase_dep, gstvideo_dep, onnxrt_dep, opencv_dep]
   )
 
-  executable('testort',
-    'src/gstortobjectdetectortest.c',
+  executable('ortobjectdetector-test',
+    'tests/gstortobjectdetectortest.c',
     c_args : plugin_c_args,
     link_args : [],
     include_directories : [],

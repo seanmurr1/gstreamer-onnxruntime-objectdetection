@@ -350,7 +350,7 @@ gst_ortobjectdetector_transform_ip (GstBaseTransform * base, GstBuffer * outbuf)
 
   if (gst_buffer_map(outbuf, &info, GST_MAP_READWRITE)) {
     // Modify frame in place
-    ort_client->runModel(info.data, vmeta->width, vmeta->height, self->score_threshold, self->nms_threshold);
+    ort_client->runModel(info.data, vmeta, self->score_threshold, self->nms_threshold);
     gst_buffer_unmap (outbuf, &info);
   }
 
