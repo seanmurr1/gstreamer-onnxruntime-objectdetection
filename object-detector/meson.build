@@ -64,5 +64,14 @@ if onnxrt_dep.found()
     dependencies : [gst_dep, gstbase_dep, gstvideo_dep, onnxrt_dep, opencv_dep]
   )
 
+  executable('testort',
+    'src/gstortobjectdetectortest.c',
+    c_args : plugin_c_args,
+    link_args : [],
+    include_directories : [],
+    link_with : gstortobjectdetector,
+    dependencies : [gst_dep, gstbase_dep, gstvideo_dep]
+  )
+
     # pkgconfig.generate(gstortobjectdetector, install_dir : plugins_pkgconfig_install_dir)
  endif
