@@ -1,4 +1,5 @@
 #include <gst/gst.h>
+#include <gst/check/gstcheck.h>
 
 /* Structure to contain all our information, so we can pass it to callbacks */
 typedef struct _PipelineData {
@@ -7,6 +8,7 @@ typedef struct _PipelineData {
   GstElement *qtdemux; 
   GstElement *decodebin;
   GstElement *convert1;
+  GstElement *capsfilter;
   GstElement *object_detector;
   GstElement *convert2;
   GstElement *sink;
@@ -132,8 +134,8 @@ bus_call (GstBus *bus, GstMessage *msg, gpointer data)
   return TRUE;
 }
 
-gint
-main (gint argc, gchar *argv[])
+void
+test_supported_format (GstCaps *caps)
 {
   PipelineData data;
   GstStateChangeReturn ret;
@@ -142,12 +144,8 @@ main (gint argc, gchar *argv[])
   guint watch_id;
 
   /* initialization */
-  gst_init (&argc, &argv);
+  gst_init (NULL, NULL);
   loop = g_main_loop_new (NULL, FALSE);
-  if (argc != 2) {
-    g_print ("Usage: %s <mp4 filename>\n", argv[0]);
-    return 01;
-  }
 
   /* create elements */
   data.pipeline = gst_pipeline_new ("my_pipeline");
@@ -162,42 +160,40 @@ main (gint argc, gchar *argv[])
   data.qtdemux = gst_element_factory_make ("qtdemux", "my_qtdemux");
   data.decodebin = gst_element_factory_make ("decodebin", "my_decodebin");
   data.convert1 = gst_element_factory_make ("videoconvert", "videoconvert1");
+  data.capsfilter = gst_element_factory_make ("capsfilter", "capsfilter");
   data.object_detector = gst_element_factory_make ("ortobjectdetector", "ortobjectdetector");
   data.convert2 = gst_element_factory_make ("videoconvert", "audioconvert2");
   data.sink = gst_element_factory_make ("autovideosink", "videosink");
 
   if (!data.qtdemux || !data.decodebin || !data.sink || !data.filesrc) {
-    g_print ("Decodebin or qtdemux or filesrc or output could not be found - check your install\n");
-    return -1;
-  } else if (!data.convert1 || !data.convert2) {
-    g_print ("Could not create videoconvert element(s), check your installation\n");
-    return -1;
+    ck_abort_msg ("Decodebin or qtdemux or filesrc or output could not be found - check your install\n");
+  } else if (!data.convert1 || !data.convert2 || !data.capsfilter) {
+    ck_abort_msg ("Could not create videoconvert element(s) or capsfilter, check your installation\n");
   } else if (!data.object_detector) {
-    g_print ("ORT object detector plugin could not be found. Make sure it "
+    ck_abort_msg ("ORT object detector plugin could not be found. Make sure it "
              "is installed correctly in $(libdir)/gstreamer-1.0/ or "
              "~/.gstreamer-1.0/plugins/ and that gst-inspect-1.0 lists it. "
              "If it doesn't, check with 'GST_DEBUG=*:2 gst-inspect-1.0' for "
              "the reason why it is not being loaded.");
-    return -1;
   }
 
-  g_object_set (G_OBJECT (data.filesrc), "location", argv[1], NULL);
-
+  g_object_set (G_OBJECT (data.filesrc), "location", "../../assets/videos/car_video.mp4", NULL);
   g_object_set (G_OBJECT (data.object_detector), "model-file", "../../assets/models/yolov4/yolov4.onnx", NULL);
   g_object_set (G_OBJECT (data.object_detector), "label-file", "../../assets/models/yolov4/labels.txt", NULL);
+
+  g_object_set (G_OBJECT (data.capsfilter), "caps", caps, NULL);
+
   // SET OTHER PROPS IF NEEDED FOR VARIOUS TESTS
 
-  gst_bin_add_many (GST_BIN (data.pipeline), data.filesrc, data.qtdemux, data.decodebin, data.convert1, data.object_detector, data.convert2, data.sink, NULL);
+  gst_bin_add_many (GST_BIN (data.pipeline), data.filesrc, data.qtdemux, data.decodebin, data.convert1, data.capsfilter, data.object_detector, data.convert2, data.sink, NULL);
 
   /* Link pipeline after demuxer first */
-  if (!gst_element_link_many (data.convert1, data.object_detector, data.convert2, data.sink, NULL)) {
-    g_print ("Failed to link pipeline beyond demuxer!\n");
-    return -1;
+  if (!gst_element_link_many (data.convert1, data.capsfilter, data.object_detector, data.convert2, data.sink, NULL)) {
+    ck_abort_msg ("Failed to link pipeline beyond demuxer!\n");
   }
   /* Link pipline demuxer portion */
   if (!gst_element_link_many (data.filesrc, data.qtdemux, NULL)) {
-    g_print ("Unable to link filesrc to qtdemux!\n");
-    return -1;
+    ck_abort_msg ("Unable to link filesrc to qtdemux!\n");
   }
 
   g_signal_connect (data.qtdemux, "pad-added", G_CALLBACK (qtdemux_pad_added_handler), &data);
@@ -220,9 +216,10 @@ main (gint argc, gchar *argv[])
       g_error_free (err);
       gst_message_unref (msg);
     }
-    return -1;
+    ck_abort();
   }
 
+  g_timeout_add_seconds(2, g_main_loop_quit, loop);
   g_main_loop_run (loop);
 
   /* clean up */
@@ -230,6 +227,33 @@ main (gint argc, gchar *argv[])
   gst_object_unref (data.pipeline);
   g_source_remove (watch_id);
   g_main_loop_unref (loop);
-
-  return 0;
 }
+
+GST_START_TEST(test_supported_format_video_rgb)
+{
+  test_supported_format(gst_caps_new_simple("video/x-raw", "format", G_TYPE_STRING, "RGB", NULL));
+}
+GST_END_TEST;
+
+Suite *gst_ortobjectdetector_suite(void) {
+  Suite *s = suite_create("GstOrtObjectDetector");
+  TCase *supported_formats = tcase_create("Supported Formats");
+  guint timeout;
+  timeout = 10;
+
+#ifdef HAVE_VALGRIND
+  {
+    if (RUNNING_ON_VALGRIND)
+      timeout *= 4;
+  }
+#endif 
+
+  tcase_set_timeout(supported_formats, timeout);
+  tcase_add_test(supported_formats, test_supported_format_video_rgb);
+
+  suite_add_tcase(s, supported_formats);
+  return s;
+}
+
+// Run tests
+GST_CHECK_MAIN(gst_ortobjectdetector);

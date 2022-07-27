@@ -18,6 +18,7 @@ gstvideo_dep = dependency('gstreamer-video-1.0', version : '>=1.19',
 
 opencv_dep = dependency('opencv4')
 onnxrt_dep = dependency('libonnxruntime')
+gstcheck_dep = dependency('gstreamer-check-1.0')
 
 # The ortobjectdetector Plugin
 
@@ -70,7 +71,7 @@ if onnxrt_dep.found()
     link_args : [],
     include_directories : [],
     link_with : gstortobjectdetector,
-    dependencies : [gst_dep, gstbase_dep, gstvideo_dep]
+    dependencies : [gst_dep, gstbase_dep, gstvideo_dep, gstcheck_dep]
   )
 
     # pkgconfig.generate(gstortobjectdetector, install_dir : plugins_pkgconfig_install_dir)
