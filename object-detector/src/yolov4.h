@@ -5,7 +5,7 @@
 #include "objectdetectionmodel.h"
 
 // Representation of bounding box
-typedef struct _BoundingBox {
+struct BoundingBox {
     float xmin;
     float ymin;
     float xmax;
@@ -13,9 +13,9 @@ typedef struct _BoundingBox {
     float score;
     int class_index;
 
-    _BoundingBox(float xmin, float ymin, float xmax, float ymax, float score, int class_index) : xmin(xmin), ymin(ymin), xmax(xmax), ymax(ymax), score(score), class_index(class_index) {}
+    BoundingBox(float xmin, float ymin, float xmax, float ymax, float score, int class_index) : xmin(xmin), ymin(ymin), xmax(xmax), ymax(ymax), score(score), class_index(class_index) {}
 
-} BoundingBox;
+};
 
 class YOLOv4 : public ObjectDetectionModel {
     private:

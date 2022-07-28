@@ -30,7 +30,6 @@ bool OrtClient::isInitialized() {
  */
 bool OrtClient::createSession(GstOrtOptimizationLevel opti_level, GstOrtExecutionProvider provider) {
     env = std::make_unique<Ort::Env>(Ort::Env(ORT_LOGGING_LEVEL_WARNING, "test"));
-    session_options.SetInterOpNumThreads(1);
 
     switch (opti_level) {
         case GST_ORT_OPTIMIZATION_LEVEL_DISABLE_ALL:
