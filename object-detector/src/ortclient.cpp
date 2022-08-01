@@ -28,7 +28,7 @@ bool OrtClient::isInitialized() {
  * @return true if setup succeeded.
  * @return false if setup failed.
  */
-bool OrtClient::createSession(GstOrtOptimizationLevel opti_level, GstOrtExecutionProvider provider) {
+bool OrtClient::createSession(GstOrtOptimizationLevel opti_level, GstOrtExecutionProvider provider, int device_id) {
     env = std::make_unique<Ort::Env>(Ort::Env(ORT_LOGGING_LEVEL_WARNING, "test"));
 
     switch (opti_level) {
@@ -52,7 +52,7 @@ bool OrtClient::createSession(GstOrtOptimizationLevel opti_level, GstOrtExecutio
     switch (provider) {
         case GST_ORT_EXECUTION_PROVIDER_CUDA:
 #ifdef GST_ML_ONNX_RUNTIME_HAVE_CUDA
-            Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_CUDA(session_options, 0));
+            Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_CUDA(session_options, device_id));
 #else 
             GST_ERROR ("Unable to setup CUDA execution provider!");
             return false;
@@ -139,10 +139,11 @@ bool OrtClient::loadClassLabels() {
  * @param opti_level ORT optimization level.
  * @param provider ORT execution provider.
  * @param detection_model object detection model to use.
+ * @param device_id device ID for hardware acceleration.
  * @return true if setup was successful.
  * @return false if setup failed.
  */
-bool OrtClient::init(std::string const& model_path, std::string const& label_path, GstOrtOptimizationLevel opti_level, GstOrtExecutionProvider provider, GstOrtDetectionModel detection_model) {
+bool OrtClient::init(std::string const& model_path, std::string const& label_path, GstOrtOptimizationLevel opti_level, GstOrtExecutionProvider provider, GstOrtDetectionModel detection_model, int device_id) {
     onnx_model_path = model_path;
     class_labels_path = label_path;
     // Setup object detection model
@@ -156,7 +157,7 @@ bool OrtClient::init(std::string const& model_path, std::string const& label_pat
             break;
     }
 
-    if (!createSession(opti_level, provider)) {
+    if (!createSession(opti_level, provider, device_id)) {
         return false;
     }
     setModelInputOutput();

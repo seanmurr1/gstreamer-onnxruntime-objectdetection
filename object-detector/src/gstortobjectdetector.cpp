@@ -58,7 +58,8 @@ enum
   PROP_EXECUTION_PROVIDER,
   PROP_SCORE_THRESHOLD,
   PROP_NMS_THRESHOLD,
-  PROP_DETECTION_MODEL
+  PROP_DETECTION_MODEL,
+  PROP_DEVICE_ID
   // TODO: add image format?
 };
 
@@ -68,6 +69,7 @@ enum
 #define DEFAULT_EXECUTION_PROVIDER GST_ORT_EXECUTION_PROVIDER_CPU
 #define DEFAULT_OPTIMIZATION_LEVEL GST_ORT_OPTIMIZATION_LEVEL_ENABLE_EXTENDED
 #define DEFAULT_DETECTION_MODEL GST_ORT_DETECTION_MODEL_YOLOV4
+#define DEFAULT_DEVICE_ID 0
 
 /* the capabilities of the inputs and outputs.
  *
@@ -141,6 +143,10 @@ gst_ortobjectdetector_class_init (GstortobjectdetectorClass * klass)
       g_param_spec_enum ("detection-model", "Detection model", "Object detection model",
           GST_TYPE_ORT_DETECTION_MODEL, DEFAULT_DETECTION_MODEL, (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
 
+  g_object_class_install_property (gobject_class, PROP_DEVICE_ID,
+      g_param_spec_int ("device-id", "Device ID", "Device ID for hardware acceleration",
+        0, G_MAXINT, 0, (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
+
   gst_element_class_set_details_simple (gstelement_class,
       "ortobjectdetector",
       "Generic/Filter",
@@ -179,6 +185,7 @@ gst_ortobjectdetector_init (Gstortobjectdetector * self)
   self->optimization_level = DEFAULT_OPTIMIZATION_LEVEL;
   self->execution_provider = DEFAULT_EXECUTION_PROVIDER;
   self->detection_model = DEFAULT_DETECTION_MODEL;
+  self->device_id = DEFAULT_DEVICE_ID;
 }
 
 static void
@@ -226,6 +233,9 @@ gst_ortobjectdetector_set_property (GObject * object, guint prop_id,
     case PROP_DETECTION_MODEL:
       self->detection_model = (GstOrtDetectionModel) g_value_get_enum (value);
       break;
+    case PROP_DEVICE_ID:
+      self->device_id = g_value_get_int(value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -260,6 +270,9 @@ gst_ortobjectdetector_get_property (GObject * object, guint prop_id,
     case PROP_DETECTION_MODEL:
       g_value_set_enum(value, self->detection_model);
       break;
+    case PROP_DEVICE_ID:
+      g_value_set_int(value, self->device_id);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -289,8 +302,9 @@ gst_ortobjectdetector_ort_setup (GstBaseTransform *base) {
   GST_INFO_OBJECT (self, "optimization-level: %d\n", self->optimization_level);
   GST_INFO_OBJECT (self, "execution-provider: %d\n", self->execution_provider);
   GST_INFO_OBJECT (self, "detection-model: %d\n", self->detection_model);
+  GST_INFO_OBJECT (self, "device-id: %d\n", self->device_id);
   GST_INFO_OBJECT (self, "Initializing ORT client...\n");
-  gboolean res = ort_client->init(self->model_file, self->label_file, self->optimization_level, self->execution_provider);
+  gboolean res = ort_client->init(self->model_file, self->label_file, self->optimization_level, self->execution_provider, self->detection_model, self->device_id);
   GST_INFO_OBJECT (self, "Initialized: %s\n", res ? "true" : "false");
   GST_OBJECT_UNLOCK (self);
   return res;

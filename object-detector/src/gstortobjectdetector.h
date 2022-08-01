@@ -45,6 +45,7 @@ struct _Gstortobjectdetector {
   gfloat score_threshold;
   gfloat nms_threshold;
 
+  gint device_id;
   GstOrtOptimizationLevel optimization_level;
   GstOrtExecutionProvider execution_provider;
   GstOrtDetectionModel detection_model;
