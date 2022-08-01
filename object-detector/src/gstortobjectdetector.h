@@ -48,8 +48,6 @@ struct _Gstortobjectdetector {
   GstOrtOptimizationLevel optimization_level;
   GstOrtExecutionProvider execution_provider;
   GstOrtDetectionModel detection_model;
-
-  gboolean silent;
 };
 
 G_END_DECLS

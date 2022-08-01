@@ -270,7 +270,6 @@ static gboolean
 gst_ortobjectdetector_ort_setup (GstBaseTransform *base) {
   Gstortobjectdetector *self = GST_ORTOBJECTDETECTOR (base);
   auto ort_client = (OrtClient*) self->ort_client;
-
   GST_OBJECT_LOCK (self);
   if (ort_client->isInitialized()) {
     GST_OBJECT_UNLOCK (self);
@@ -279,17 +278,20 @@ gst_ortobjectdetector_ort_setup (GstBaseTransform *base) {
 
   if (!self->model_file || !self->label_file) {
     GST_OBJECT_UNLOCK (self);
-    GST_ERROR_OBJECT (self, "Unable to initialize ORT client without model and/or label file.");
+    GST_ERROR_OBJECT (self, "Unable to initialize ORT client without model and/or label file!");
     return FALSE;
   }
 
-  g_print ("model-file: %s\n", self->model_file);
-  g_print ("label-file: %s\n", self->label_file);
-  g_print ("Opti: %d\n", self->optimization_level);
-  g_print ("Exec: %d\n", self->execution_provider);
-  g_print ("Initializing...\n");
-  auto res = ort_client->init(self->model_file, self->label_file, self->optimization_level, self->execution_provider);
-  g_print ("Initialized: %s\n", res ? "true" : "false");
+  GST_INFO_OBJECT (self, "model-file: %s\n", self->model_file);
+  GST_INFO_OBJECT (self, "label-file: %s\n", self->label_file);
+  GST_INFO_OBJECT (self, "score-threshold: %f\n", self->score_threshold);
+  GST_INFO_OBJECT (self, "nms-threshold: %f\n", self->nms_threshold);
+  GST_INFO_OBJECT (self, "optimization-level: %d\n", self->optimization_level);
+  GST_INFO_OBJECT (self, "execution-provider: %d\n", self->execution_provider);
+  GST_INFO_OBJECT (self, "detection-model: %d\n", self->detection_model);
+  GST_INFO_OBJECT (self, "Initializing ORT client...\n");
+  gboolean res = ort_client->init(self->model_file, self->label_file, self->optimization_level, self->execution_provider);
+  GST_INFO_OBJECT (self, "Initialized: %s\n", res ? "true" : "false");
   GST_OBJECT_UNLOCK (self);
   return res;
 }

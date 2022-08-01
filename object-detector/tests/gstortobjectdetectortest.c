@@ -23,11 +23,11 @@ qtdemux_pad_added_handler (GstElement *src, GstPad *new_pad, PipelineData *data)
   GstStructure *new_pad_struct = NULL;
   const gchar *new_pad_type = NULL;
 
-  g_print ("Received new pad '%s' from '%s':\n", GST_PAD_NAME (new_pad), GST_ELEMENT_NAME (src));
+  GST_DEBUG ("Received new pad '%s' from '%s':\n", GST_PAD_NAME (new_pad), GST_ELEMENT_NAME (src));
 
   /* If our pad is already linked, we have nothing to do here */
   if (gst_pad_is_linked (sink_pad)) {
-    g_print ("We are already linked. Ignoring.\n");
+    GST_DEBUG ("We are already linked. Ignoring.\n");
     goto exit;
   }
 
@@ -36,16 +36,16 @@ qtdemux_pad_added_handler (GstElement *src, GstPad *new_pad, PipelineData *data)
   new_pad_struct = gst_caps_get_structure (new_pad_caps, 0);
   new_pad_type = gst_structure_get_name (new_pad_struct);
   if (!g_str_has_prefix (new_pad_type, "video/x-h264")) {
-    g_print ("It has type '%s' which is not video/x-h264. Ignoring.\n", new_pad_type);
+    GST_DEBUG ("It has type '%s' which is not video/x-h264. Ignoring.\n", new_pad_type);
     goto exit;
   }
 
   /* Attempt the link */
   ret = gst_pad_link (new_pad, sink_pad);
   if (GST_PAD_LINK_FAILED (ret)) {
-    g_print ("Type is '%s' but link failed.\n", new_pad_type);
+    GST_DEBUG ("Type is '%s' but link failed.\n", new_pad_type);
   } else {
-    g_print ("Link succeeded (type '%s').\n", new_pad_type);
+    GST_DEBUG ("Link succeeded (type '%s').\n", new_pad_type);
   }
 
 exit:
@@ -66,11 +66,11 @@ decodebin_pad_added_handler (GstElement *src, GstPad *new_pad, PipelineData *dat
   GstStructure *new_pad_struct = NULL;
   const gchar *new_pad_type = NULL;
 
-  g_print ("Received new pad '%s' from '%s':\n", GST_PAD_NAME (new_pad), GST_ELEMENT_NAME (src));
+  GST_DEBUG ("Received new pad '%s' from '%s':\n", GST_PAD_NAME (new_pad), GST_ELEMENT_NAME (src));
 
   /* If our pad is already linked, we have nothing to do here */
   if (gst_pad_is_linked (sink_pad)) {
-    g_print ("We are already linked. Ignoring.\n");
+    GST_DEBUG ("We are already linked. Ignoring.\n");
     goto exit;
   }
 
@@ -79,16 +79,16 @@ decodebin_pad_added_handler (GstElement *src, GstPad *new_pad, PipelineData *dat
   new_pad_struct = gst_caps_get_structure (new_pad_caps, 0);
   new_pad_type = gst_structure_get_name (new_pad_struct);
   if (!g_str_has_prefix (new_pad_type, "video/x-raw")) {
-    g_print ("It has type '%s' which is not raw video. Ignoring.\n", new_pad_type);
+    GST_DEBUG ("It has type '%s' which is not raw video. Ignoring.\n", new_pad_type);
     goto exit;
   }
 
   /* Attempt the link */
   ret = gst_pad_link (new_pad, sink_pad);
   if (GST_PAD_LINK_FAILED (ret)) {
-    g_print ("Type is '%s' but link failed.\n", new_pad_type);
+    GST_DEBUG ("Type is '%s' but link failed.\n", new_pad_type);
   } else {
-    g_print ("Link succeeded (type '%s').\n", new_pad_type);
+    GST_DEBUG ("Link succeeded (type '%s').\n", new_pad_type);
   }
 
 exit:
@@ -107,7 +107,7 @@ bus_call (GstBus *bus, GstMessage *msg, gpointer data)
 
   switch (GST_MESSAGE_TYPE (msg)) {
     case GST_MESSAGE_EOS:
-      g_print ("End-of-stream\n");
+      GST_DEBUG ("End-of-stream\n");
       g_main_loop_quit (loop);
       break;
     case GST_MESSAGE_ERROR: {
@@ -116,11 +116,11 @@ bus_call (GstBus *bus, GstMessage *msg, gpointer data)
 
       gst_message_parse_error (msg, &err, &debug);
 
-      g_print ("Error: %s\n", err->message);
+      GST_ERROR ("Error: %s\n", err->message);
       g_error_free (err);
 
       if (debug) {
-        g_print ("Debug details: %s\n", debug);
+        GST_DEBUG ("Debug details: %s\n", debug);
         g_free (debug);
       }
 
@@ -204,7 +204,7 @@ test_supported_format (GstCaps *caps)
   if (ret == GST_STATE_CHANGE_FAILURE) {
     GstMessage *msg;
 
-    g_print ("Failed to start up pipeline!\n");
+    GST_ERROR ("Failed to start up pipeline!\n");
 
     /* check if there is an error message with details on the bus */
     msg = gst_bus_poll (bus, GST_MESSAGE_ERROR, 0);
@@ -212,7 +212,7 @@ test_supported_format (GstCaps *caps)
       GError *err = NULL;
 
       gst_message_parse_error (msg, &err, NULL);
-      g_print ("ERROR: %s\n", err->message);
+      GST_ERROR ("ERROR: %s\n", err->message);
       g_error_free (err);
       gst_message_unref (msg);
     }

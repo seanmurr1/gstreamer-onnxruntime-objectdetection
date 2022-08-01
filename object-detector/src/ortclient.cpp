@@ -54,7 +54,7 @@ bool OrtClient::createSession(GstOrtOptimizationLevel opti_level, GstOrtExecutio
 #ifdef GST_ML_ONNX_RUNTIME_HAVE_CUDA
             Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_CUDA(session_options, 0));
 #else 
-            std::cout << "Unable to setup CUDA execution provider." << std::endl;
+            GST_ERROR ("Unable to setup CUDA execution provider!");
             return false;
 #endif
             break;
@@ -115,14 +115,14 @@ bool OrtClient::loadClassLabels() {
     labels = std::vector<std::string>(num_classes);
     std::ifstream input(class_labels_path);
     if (!input.good()) {
-        std::cout << "Unable to open label file!" << std::endl;
+        GST_ERROR ("Unable to open label file!");
         return false;
     }
     std::string line;
     
     for (size_t i = 0; i < num_classes; i++) {
         if (!getline(input, line)) {
-            std::cout << "Malformed label file!" << std::endl;
+            GST_ERROR ("Malformed label file!");
             return false;
         }
         labels[i] = line;
@@ -183,7 +183,7 @@ bool OrtClient::init(std::string const& model_path, std::string const& label_pat
  */
 void OrtClient::runModel(uint8_t *const data, int width, int height, bool is_rgb, float score_threshold, float nms_threshold) {
     if (!is_init) {
-        std::cout << "Unable to run inference when ORT client has not been initialized!" << std::endl;
+        GST_ERROR ("Unable to run inference when ORT client has not been initialized!");
         return;
     }
     auto memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
@@ -213,7 +213,7 @@ void OrtClient::runModel(uint8_t *const data, GstVideoMeta *vmeta, float score_t
             runModel(data, vmeta->width, vmeta->height, false, score_threshold, nms_threshold);
             break; 
         default:
-            std::cout << "Unable to recognize color format!" << std::endl;
+            GST_ERROR ("Unable to recognize color format!");
             break;
     }
 }
