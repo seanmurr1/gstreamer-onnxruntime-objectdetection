@@ -55,11 +55,11 @@ class YOLOv4 : public ObjectDetectionModel {
         void writeBoundingBoxes(std::vector<std::string> const& class_names);
 
     public:
-        ~YOLOv4();
         YOLOv4();
+        ~YOLOv4() = default;
         size_t getNumClasses();
         size_t getInputTensorSize();
-        std::vector<float>& preprocess(uint8_t *const data, int width, int height, bool rgb);
+        std::vector<float>& preprocess(uint8_t *const data, int width, int height, bool is_rgb);
         void postprocess(std::vector<Ort::Value> const& model_output, std::vector<std::string> const& class_labels, float score_threshold, float nms_threshold);
 };
 

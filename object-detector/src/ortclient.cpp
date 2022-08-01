@@ -17,7 +17,7 @@ OrtClient::~OrtClient() {
 }
 
 bool OrtClient::isInitialized() {
-    return check_init;
+    return is_init;
 }
 
 /**
@@ -162,7 +162,7 @@ bool OrtClient::init(std::string const& model_path, std::string const& label_pat
         return false;
     }
 
-    check_init = true;
+    is_init = true;
     return true;
 }
 
@@ -177,13 +177,13 @@ bool OrtClient::init(std::string const& model_path, std::string const& label_pat
  * @param score_threshold score threshold when filtering bounding boxes.
  * @param nms_threshold threshold for non-maximal suppression and IOU.
  */
-void OrtClient::runModel(uint8_t *const data, int width, int height, bool rgb, float score_threshold, float nms_threshold) {
-    if (!check_init) {
+void OrtClient::runModel(uint8_t *const data, int width, int height, bool is_rgb, float score_threshold, float nms_threshold) {
+    if (!is_init) {
         std::cout << "Unable to run inference when ORT client has not been initialized!" << std::endl;
         return;
     }
     auto memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
-    std::vector<float>& input_tensor_values = model->preprocess(data, width, height, rgb);
+    std::vector<float>& input_tensor_values = model->preprocess(data, width, height, is_rgb);
     Ort::Value input_tensor = Ort::Value::CreateTensor<float>(memory_info, input_tensor_values.data(), input_tensor_size, input_node_dims[0].data(), input_node_dims[0].size());
     assert(input_tensor.IsTensor());
 

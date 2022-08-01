@@ -12,8 +12,6 @@ YOLOv4::YOLOv4() {
 
 ObjectDetectionModel::~ObjectDetectionModel() { }
 
-YOLOv4::~YOLOv4() { }
-
 size_t YOLOv4::getNumClasses() {
     return NUM_CLASSES;
 }
@@ -51,10 +49,10 @@ void YOLOv4::padImage(cv::Mat const& image) {
  * @param is_rgb is image RGB or BGR format.
  * @return preprocessed image data as vector of floats.
  */
-std::vector<float>& YOLOv4::preprocess(uint8_t *const data, int width, int height, bool rgb) {
+std::vector<float>& YOLOv4::preprocess(uint8_t *const data, int width, int height, bool is_rgb) {
     org_image_h = height;
     org_image_w = width;
-    is_rgb = rgb;
+    this->is_rgb = is_rgb;
     // Wrap opencv mat image
     std::vector<int> image_size{org_image_h, org_image_w};
     // NOTE: this does not copy data, simply wraps
