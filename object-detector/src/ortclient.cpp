@@ -114,11 +114,15 @@ bool OrtClient::loadClassLabels() {
     size_t num_classes = model->getNumClasses();
     labels = std::vector<std::string>(num_classes);
     std::ifstream input(class_labels_path);
+    if (!input.good()) {
+        std::cout << "Unable to open label file!" << std::endl;
+        return false;
+    }
     std::string line;
     
     for (size_t i = 0; i < num_classes; i++) {
         if (!getline(input, line)) {
-            std::cout << "Malformed label file." << std::endl;
+            std::cout << "Malformed label file!" << std::endl;
             return false;
         }
         labels[i] = line;
