@@ -138,7 +138,7 @@ bool OrtClient::loadClassLabels() {
  * @return true if setup was successful.
  * @return false if setup failed.
  */
-bool OrtClient::init(std::string model_path, std::string label_path, GstOrtOptimizationLevel opti_level, GstOrtExecutionProvider provider, GstOrtDetectionModel detection_model) {
+bool OrtClient::init(std::string const& model_path, std::string const& label_path, GstOrtOptimizationLevel opti_level, GstOrtExecutionProvider provider, GstOrtDetectionModel detection_model) {
     onnx_model_path = model_path;
     class_labels_path = label_path;
     // Setup object detection model
@@ -183,7 +183,7 @@ void OrtClient::runModel(uint8_t *const data, int width, int height, bool rgb, f
         return;
     }
     auto memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
-    std::vector<float> &input_tensor_values = model->preprocess(data, width, height, rgb);
+    std::vector<float>& input_tensor_values = model->preprocess(data, width, height, rgb);
     Ort::Value input_tensor = Ort::Value::CreateTensor<float>(memory_info, input_tensor_values.data(), input_tensor_size, input_node_dims[0].data(), input_node_dims[0].size());
     assert(input_tensor.IsTensor());
 

@@ -28,7 +28,7 @@ size_t YOLOv4::getInputTensorSize() {
  * 
  * @param image image to pad.
  */
-void YOLOv4::padImage(cv::Mat const &image) {
+void YOLOv4::padImage(cv::Mat const& image) {
     resize_ratio = std::min(INPUT_WIDTH / (org_image_w * 1.0f), INPUT_HEIGHT / (org_image_h * 1.0f));
     // New dimensions to preserve aspect ratio
     int nw = resize_ratio * org_image_w;
@@ -51,7 +51,7 @@ void YOLOv4::padImage(cv::Mat const &image) {
  * @param is_rgb is image RGB or BGR format.
  * @return preprocessed image data as vector of floats.
  */
-std::vector<float> &YOLOv4::preprocess(uint8_t *const data, int width, int height, bool rgb) {
+std::vector<float>& YOLOv4::preprocess(uint8_t *const data, int width, int height, bool rgb) {
     org_image_h = height;
     org_image_w = width;
     is_rgb = rgb;
@@ -90,7 +90,7 @@ float sigmoid(float value) {
  * @return true if transformed coordinates are valid.
  * @return false if transformed coordinates are invalid.
  */
-bool YOLOv4::transformCoordinates(std::vector<float> &coords, int layer, int row, int col, int anchor) {
+bool YOLOv4::transformCoordinates(std::vector<float>& coords, int layer, int row, int col, int anchor) {
     float x = coords[0];
     float y = coords[1];
     float w = coords[2];
@@ -153,7 +153,7 @@ std::pair<int, float> YOLOv4::findMaxClass(float const *layer_output, long offse
  * @param model_output YOLOv4 inferencing output.
  * @param threshold threshold to filter boxes based on confidence/score.
  */
-void YOLOv4::getBoundingBoxes(std::vector<Ort::Value> const &model_output, float threshold) {
+void YOLOv4::getBoundingBoxes(std::vector<Ort::Value> const& model_output, float threshold) {
     // Iterate through output layers
     for (size_t layer = 0; layer < model_output.size(); layer++) {
         // Layer data
@@ -205,7 +205,7 @@ void YOLOv4::getBoundingBoxes(std::vector<Ort::Value> const &model_output, float
  * @param bbox2 second bounding box.
  * @return float IOU of the two boxes.
  */
-float YOLOv4::bbox_iou(std::unique_ptr<BoundingBox> const &bbox1, std::unique_ptr<BoundingBox> const &bbox2) {
+float YOLOv4::bbox_iou(std::unique_ptr<BoundingBox> const& bbox1, std::unique_ptr<BoundingBox> const& bbox2) {
     float area1 = (bbox1->xmax - bbox1->xmin) * (bbox1->ymax - bbox1->ymin);
     float area2 = (bbox2->xmax - bbox2->xmin) * (bbox2->ymax - bbox2->ymin);
     // Coords of intersection box
@@ -225,7 +225,7 @@ float YOLOv4::bbox_iou(std::unique_ptr<BoundingBox> const &bbox1, std::unique_pt
 }
 
 // Compares score of two bounding boxes. Used to sort vectors of bounding boxes.
-bool compareBoxScore(std::unique_ptr<BoundingBox> &b1, std::unique_ptr<BoundingBox> &b2) {
+bool compareBoxScore(std::unique_ptr<BoundingBox>& b1, std::unique_ptr<BoundingBox>& b2) {
     return b2->score < b1->score;
 }
 
@@ -237,7 +237,7 @@ bool compareBoxScore(std::unique_ptr<BoundingBox> &b1, std::unique_ptr<BoundingB
  */
 void YOLOv4::nms(float threshold) {
     for (auto i = 0; i < NUM_CLASSES; i++) {
-        std::list<std::unique_ptr<BoundingBox>> &boxes = class_boxes[i];
+        std::list<std::unique_ptr<BoundingBox>>& boxes = class_boxes[i];
         if (boxes.empty()) {
             continue;
         }
@@ -245,10 +245,10 @@ void YOLOv4::nms(float threshold) {
         while (!boxes.empty()) {
             filtered_boxes.push_back(move(boxes.front()));
             boxes.pop_front();
-            std::unique_ptr<BoundingBox> &accepted_box = filtered_boxes.back();
+            std::unique_ptr<BoundingBox>& accepted_box = filtered_boxes.back();
             std::list<std::unique_ptr<BoundingBox>>::iterator itr = boxes.begin();
             while (itr != boxes.end()) {
-                std::unique_ptr<BoundingBox> &test_box = *itr;
+                std::unique_ptr<BoundingBox>& test_box = *itr;
                 if (bbox_iou(accepted_box, test_box) > threshold) {
                     // Performance: free memory early when possible
                     test_box.reset();
@@ -294,14 +294,14 @@ void YOLOv4::loadClassColors() {
  * 
  * @param class_names vector of class names.
  */
-void YOLOv4::writeBoundingBoxes(std::vector<std::string> const &class_names) {
+void YOLOv4::writeBoundingBoxes(std::vector<std::string> const& class_names) {
     float font_scale = 0.5f;
     int bbox_thick = (int) (0.6f * (org_image_h + org_image_w) / 600.f);
 
     for (size_t i = 0; i < filtered_boxes.size(); i++) {
         // Bounding box information
-        std::unique_ptr<BoundingBox> &bbox = filtered_boxes[i];
-        std::string const &class_name = class_names[bbox->class_index];
+        std::unique_ptr<BoundingBox>& bbox = filtered_boxes[i];
+        std::string const& class_name = class_names[bbox->class_index];
         float score = bbox->score;
         auto c1 = cv::Point(bbox->xmin, bbox->ymin);
         auto c2 = cv::Point(bbox->xmax, bbox->ymax);
@@ -334,7 +334,7 @@ void YOLOv4::writeBoundingBoxes(std::vector<std::string> const &class_names) {
  * @param score_threshold threshold for bounding box scores.
  * @param nms_threshold threshold for computing non-maximal suppression.
  */
-void YOLOv4::postprocess(std::vector<Ort::Value> const &model_output, std::vector<std::string> const &class_labels, float score_threshold, float nms_threshold) {
+void YOLOv4::postprocess(std::vector<Ort::Value> const& model_output, std::vector<std::string> const& class_labels, float score_threshold, float nms_threshold) {
     getBoundingBoxes(model_output, score_threshold);
     nms(nms_threshold);
     writeBoundingBoxes(class_labels);

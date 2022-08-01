@@ -46,21 +46,21 @@ class YOLOv4 : public ObjectDetectionModel {
         std::vector<std::unique_ptr<BoundingBox>> filtered_boxes;
 
         void loadClassColors();
-        void padImage(cv::Mat const &image);
+        void padImage(cv::Mat const& image);
         std::pair<int, float> findMaxClass(float const *layer_output, long offset);
-        bool transformCoordinates(std::vector<float> &coords, int layer, int row, int col, int anchor);
-        void getBoundingBoxes(std::vector<Ort::Value> const &model_output, float threshold);
-        float bbox_iou(std::unique_ptr<BoundingBox> const &bbox1, std::unique_ptr<BoundingBox> const &bbox2);
+        bool transformCoordinates(std::vector<float>& coords, int layer, int row, int col, int anchor);
+        void getBoundingBoxes(std::vector<Ort::Value> const& model_output, float threshold);
+        float bbox_iou(std::unique_ptr<BoundingBox> const& bbox1, std::unique_ptr<BoundingBox> const& bbox2);
         void nms(float threshold);
-        void writeBoundingBoxes(std::vector<std::string> const &class_names);
+        void writeBoundingBoxes(std::vector<std::string> const& class_names);
 
     public:
         ~YOLOv4();
         YOLOv4();
         size_t getNumClasses();
         size_t getInputTensorSize();
-        std::vector<float> &preprocess(uint8_t *const data, int width, int height, bool rgb);
-        void postprocess(std::vector<Ort::Value> const &model_output, std::vector<std::string> const &class_labels, float score_threshold, float nms_threshold);
+        std::vector<float>& preprocess(uint8_t *const data, int width, int height, bool rgb);
+        void postprocess(std::vector<Ort::Value> const& model_output, std::vector<std::string> const& class_labels, float score_threshold, float nms_threshold);
 };
 
 #endif
