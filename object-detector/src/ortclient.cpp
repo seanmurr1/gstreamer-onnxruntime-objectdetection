@@ -156,6 +156,8 @@ bool OrtClient::init(std::string const& model_path, std::string const& label_pat
             model = std::unique_ptr<ObjectDetectionModel>(new YOLOv4());
             break;
     }
+    // Set up internal tensor value vector (acts as a cache)
+    input_tensor_values = std::vector<float>(model->getInputTensorSize());
 
     if (!createSession(opti_level, provider, device_id)) {
         return false;
@@ -188,7 +190,7 @@ void OrtClient::runModel(uint8_t *const data, int width, int height, bool is_rgb
         return;
     }
     auto memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
-    std::vector<float>& input_tensor_values = model->preprocess(data, width, height, is_rgb);
+    model->preprocess(data, input_tensor_values, width, height, is_rgb);
     Ort::Value input_tensor = Ort::Value::CreateTensor<float>(memory_info, input_tensor_values.data(), input_tensor_size, input_node_dims[0].data(), input_node_dims[0].size());
     assert(input_tensor.IsTensor());
 

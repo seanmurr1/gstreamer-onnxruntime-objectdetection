@@ -2,7 +2,6 @@
 
 YOLOv4::YOLOv4() {
     loadClassColors();
-    input_tensor_values = std::vector<float>(getInputTensorSize());
     class_boxes = std::vector<std::list<std::unique_ptr<BoundingBox>>>(NUM_CLASSES);
     anchors = std::vector<float>{12.f,16.f, 19.f,36.f, 40.f,28.f, 36.f,75.f, 76.f,55.f, 72.f,146.f, 142.f,110.f, 192.f,243.f, 459.f,401.f};
     strides = std::vector<float>{8.f, 16.f, 32.f};
@@ -44,12 +43,12 @@ void YOLOv4::padImage(cv::Mat const& image) {
  * @brief Preprocesses input data to comply with specifications of YOLOv4 algorithm.
  * 
  * @param data data to process.
+ * @param input_tensor_values out-param to store preprocessed tensor values.
  * @param width image width.
  * @param height image height.
  * @param is_rgb is image RGB or BGR format.
- * @return preprocessed image data as vector of floats.
  */
-std::vector<float>& YOLOv4::preprocess(uint8_t *const data, int width, int height, bool is_rgb) {
+void YOLOv4::preprocess(uint8_t *const data, std::vector<float>& input_tensor_values, int width, int height, bool is_rgb) {
     org_image_h = height;
     org_image_w = width;
     this->is_rgb = is_rgb;
@@ -63,11 +62,10 @@ std::vector<float>& YOLOv4::preprocess(uint8_t *const data, int width, int heigh
     if (!is_rgb) {
         cv::cvtColor(padded_image, padded_image, cv::COLOR_BGR2RGB);
     }
-    // Assign mat values to internal vector and scale (COPIES)
+    // Assign mat values to tensor data vector and scale (COPIES)
     for (size_t i = 0; i < getInputTensorSize(); i++) {
         input_tensor_values[i] = (float) padded_image.data[i] / 255.f;
     }
-    return input_tensor_values;
 }
 
 // Apply sigmoid function to a value; returns a number between 0 and 1

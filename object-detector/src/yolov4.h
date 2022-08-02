@@ -36,8 +36,6 @@ class YOLOv4 : public ObjectDetectionModel {
         bool is_rgb;
         
         std::vector<cv::Scalar> class_colors;
-        std::vector<float> input_tensor_values;
-
         std::vector<float> anchors;
         std::vector<float> strides;
         std::vector<float> xyscale;
@@ -59,7 +57,7 @@ class YOLOv4 : public ObjectDetectionModel {
         ~YOLOv4() = default;
         size_t getNumClasses();
         size_t getInputTensorSize();
-        std::vector<float>& preprocess(uint8_t *const data, int width, int height, bool is_rgb);
+        void preprocess(uint8_t *const data, std::vector<float>& input_tensor_values, int width, int height, bool is_rgb);
         void postprocess(std::vector<Ort::Value> const& model_output, std::vector<std::string> const& class_labels, float score_threshold, float nms_threshold);
 };
 

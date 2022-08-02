@@ -20,6 +20,8 @@ class OrtClient {
         std::vector<const char*> output_node_names;
         std::vector<std::vector<int64_t>> output_node_dims;
 
+        std::vector<float> input_tensor_values;
+
         Ort::SessionOptions session_options;
         Ort::AllocatorWithDefaultOptions allocator;
         std::unique_ptr<Ort::Session> session;
