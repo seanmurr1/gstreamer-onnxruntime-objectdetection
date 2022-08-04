@@ -7,6 +7,10 @@
 #include <providers/cuda/cuda_provider_factory.h>
 #endif
 
+OrtClient::OrtClient() {
+    env = Ort::Env(ORT_LOGGING_LEVEL_WARNING, "test");
+}
+
 OrtClient::~OrtClient() {
     for (const char* node_name : input_node_names) {
         allocator.Free(const_cast<void*>(reinterpret_cast<const void*>(node_name)));
@@ -29,7 +33,6 @@ bool OrtClient::isInitialized() {
  * @return false if setup failed.
  */
 bool OrtClient::createSession(GstOrtOptimizationLevel opti_level, GstOrtExecutionProvider provider, int device_id) {
-    env = std::make_unique<Ort::Env>(Ort::Env(ORT_LOGGING_LEVEL_WARNING, "test"));
 
     switch (opti_level) {
         case GST_ORT_OPTIMIZATION_LEVEL_DISABLE_ALL:
@@ -63,8 +66,7 @@ bool OrtClient::createSession(GstOrtOptimizationLevel opti_level, GstOrtExecutio
         default:
             break;
     }
-
-    session = std::make_unique<Ort::Session>(Ort::Session(*env, onnx_model_path.c_str(), session_options));
+    session = Ort::Session(env, onnx_model_path.c_str(), session_options);
     return true;
 }
 
@@ -72,19 +74,19 @@ bool OrtClient::createSession(GstOrtOptimizationLevel opti_level, GstOrtExecutio
  * @brief Parses ONNX model input/output information.
  */
 void OrtClient::setModelInputOutput() {
-    num_input_nodes = session->GetInputCount();
+    num_input_nodes = session.GetInputCount();
     input_node_names = std::vector<const char*>(num_input_nodes);
     input_node_dims = std::vector<std::vector<int64_t>>(num_input_nodes);
 
-    num_output_nodes = session->GetOutputCount();
+    num_output_nodes = session.GetOutputCount();
     output_node_names = std::vector<const char*>(num_output_nodes);
     output_node_dims = std::vector<std::vector<int64_t>>(num_output_nodes);
 
     // Input nodes
     for (size_t i = 0; i < num_input_nodes; i++) {
-        char *input_name = session->GetInputName(i, allocator);
+        char *input_name = session.GetInputName(i, allocator);
         input_node_names[i] = input_name;
-        Ort::TypeInfo type_info = session->GetInputTypeInfo(i);
+        Ort::TypeInfo type_info = session.GetInputTypeInfo(i);
         auto tensor_info = type_info.GetTensorTypeAndShapeInfo();
         input_node_dims[i] = tensor_info.GetShape();
     }
@@ -96,9 +98,9 @@ void OrtClient::setModelInputOutput() {
     }
     // Output nodes
     for (size_t i = 0; i < num_output_nodes; i++) {
-        char *output_name = session->GetOutputName(i, allocator);
+        char *output_name = session.GetOutputName(i, allocator);
         output_node_names[i] = output_name;
-        Ort::TypeInfo type_info = session->GetOutputTypeInfo(i);
+        Ort::TypeInfo type_info = session.GetOutputTypeInfo(i);
         auto tensor_info = type_info.GetTensorTypeAndShapeInfo();
         output_node_dims[i] = tensor_info.GetShape();
     }
@@ -189,12 +191,12 @@ void OrtClient::runModel(uint8_t *const data, int width, int height, bool is_rgb
         GST_ERROR ("Unable to run inference when ORT client has not been initialized!");
         return;
     }
-    auto memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+    //auto memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
     model->preprocess(data, input_tensor_values, width, height, is_rgb);
     Ort::Value input_tensor = Ort::Value::CreateTensor<float>(memory_info, input_tensor_values.data(), input_tensor_size, input_node_dims[0].data(), input_node_dims[0].size());
     assert(input_tensor.IsTensor());
 
-    std::vector<Ort::Value> model_output = session->Run(Ort::RunOptions{nullptr}, input_node_names.data(), &input_tensor, num_input_nodes, output_node_names.data(), num_output_nodes);
+    std::vector<Ort::Value> model_output = session.Run(Ort::RunOptions{nullptr}, input_node_names.data(), &input_tensor, num_input_nodes, output_node_names.data(), num_output_nodes);
     model->postprocess(model_output, labels, score_threshold, nms_threshold);
 }
 

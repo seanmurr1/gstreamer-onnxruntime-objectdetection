@@ -7,6 +7,10 @@
 
 class OrtClient {
     private:
+        Ort::Env env;
+        Ort::Session session{nullptr};
+        Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+
         std::unique_ptr<ObjectDetectionModel> model;
         std::string onnx_model_path;
         std::string class_labels_path;
@@ -24,8 +28,6 @@ class OrtClient {
 
         Ort::SessionOptions session_options;
         Ort::AllocatorWithDefaultOptions allocator;
-        std::unique_ptr<Ort::Session> session;
-        std::unique_ptr<Ort::Env> env;
 
         bool is_init;
 
@@ -34,7 +36,7 @@ class OrtClient {
         bool createSession(GstOrtOptimizationLevel opti_level, GstOrtExecutionProvider provider, int device_id); 
 
     public:
-        OrtClient() = default;
+        OrtClient();
         ~OrtClient();
         bool init(std::string const& model_path, std::string const& label_path, GstOrtOptimizationLevel = GST_ORT_OPTIMIZATION_LEVEL_ENABLE_EXTENDED, GstOrtExecutionProvider = GST_ORT_EXECUTION_PROVIDER_CPU, GstOrtDetectionModel = GST_ORT_DETECTION_MODEL_YOLOV4, int = 0);
         bool isInitialized();

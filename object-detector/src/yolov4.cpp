@@ -112,7 +112,10 @@ bool YOLOv4::transformCoordinates(std::vector<float>& coords, int layer, int row
     }
     // Disregard boxes with invalid size/area
     auto area = (xmax_org - xmin_org) * (ymax_org - ymin_org);
-    if (area <= 0 || isnan(area) || !isfinite(area)) {
+    // if (area <= 0 || isnan(area) || !isfinite(area)) {
+    //     return false;
+    // }
+    if (area <= 0) {
         return false;
     }
     // Update vector
