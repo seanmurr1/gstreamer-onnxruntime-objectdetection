@@ -6,42 +6,42 @@
 #include "gstortelement.h"
 
 class OrtClient {
-    private:
-        Ort::Env env;
-        Ort::Session session{nullptr};
-        //Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+  private:
+    Ort::Env env;
+    Ort::Session session{nullptr};
+    //Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
 
-        std::unique_ptr<ObjectDetectionModel> model;
-        std::string onnx_model_path;
-        std::string class_labels_path;
-        std::vector<std::string> labels;
+    std::unique_ptr<ObjectDetectionModel> model;
+    std::string onnx_model_path;
+    std::string class_labels_path;
+    std::vector<std::string> labels;
 
-        size_t input_tensor_size;
-        size_t num_input_nodes;
-        std::vector<const char*> input_node_names;
-        std::vector<std::vector<int64_t>> input_node_dims;
-        size_t num_output_nodes;
-        std::vector<const char*> output_node_names;
-        std::vector<std::vector<int64_t>> output_node_dims;
+    size_t input_tensor_size;
+    size_t num_input_nodes;
+    std::vector<const char*> input_node_names;
+    std::vector<std::vector<int64_t>> input_node_dims;
+    size_t num_output_nodes;
+    std::vector<const char*> output_node_names;
+    std::vector<std::vector<int64_t>> output_node_dims;
 
-        std::vector<float> input_tensor_values;
+    std::vector<float> input_tensor_values;
 
-        Ort::SessionOptions session_options;
-        Ort::AllocatorWithDefaultOptions allocator;
+    Ort::SessionOptions session_options;
+    Ort::AllocatorWithDefaultOptions allocator;
 
-        bool is_init;
+    bool is_init;
 
-        bool LoadClassLabels();
-        bool SetModelInputOutput();
-        bool CreateSession(GstOrtOptimizationLevel opti_level, GstOrtExecutionProvider provider, int device_id); 
+    bool LoadClassLabels();
+    bool SetModelInputOutput();
+    bool CreateSession(GstOrtOptimizationLevel opti_level, GstOrtExecutionProvider provider, int device_id); 
 
-    public:
-        OrtClient();
-        ~OrtClient();
-        bool Init(std::string const& model_path, std::string const& label_path, GstOrtOptimizationLevel = GST_ORT_OPTIMIZATION_LEVEL_ENABLE_EXTENDED, GstOrtExecutionProvider = GST_ORT_EXECUTION_PROVIDER_CPU, GstOrtDetectionModel = GST_ORT_DETECTION_MODEL_YOLOV4, int = 0);
-        bool IsInitialized();
-        void RunModel(uint8_t *const data, int width, int height, bool is_rgb, float = 0.25, float = 0.213);
-        void RunModel(uint8_t *const data, GstVideoMeta *vmeta, float = 0.25, float = 0.213);
+  public:
+    OrtClient();
+    ~OrtClient();
+    bool Init(std::string const& model_path, std::string const& label_path, GstOrtOptimizationLevel = GST_ORT_OPTIMIZATION_LEVEL_ENABLE_EXTENDED, GstOrtExecutionProvider = GST_ORT_EXECUTION_PROVIDER_CPU, GstOrtDetectionModel = GST_ORT_DETECTION_MODEL_YOLOV4, int = 0);
+    bool IsInitialized();
+    void RunModel(uint8_t *const data, int width, int height, bool is_rgb, float = 0.25, float = 0.213);
+    void RunModel(uint8_t *const data, GstVideoMeta *vmeta, float = 0.25, float = 0.213);
 };
 
 #endif
