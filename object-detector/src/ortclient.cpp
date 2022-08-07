@@ -8,9 +8,14 @@
 #endif
 
 OrtClient::OrtClient() {
-    env = Ort::Env(ORT_LOGGING_LEVEL_WARNING, "test");
+    try {
+        env = Ort::Env(ORT_LOGGING_LEVEL_WARNING, "test");
+    } catch (Ort::Exception& e) {
+        GST_ERROR ("%s\n", e.what());
+    }
 }
 
+// TODO: use GetInputNameAllocated to prevent needed to free node names
 OrtClient::~OrtClient() {
     for (const char* node_name : input_node_names) {
         allocator.Free(const_cast<void*>(reinterpret_cast<const void*>(node_name)));
@@ -33,76 +38,83 @@ bool OrtClient::isInitialized() {
  * @return false if setup failed.
  */
 bool OrtClient::createSession(GstOrtOptimizationLevel opti_level, GstOrtExecutionProvider provider, int device_id) {
-
-    switch (opti_level) {
-        case GST_ORT_OPTIMIZATION_LEVEL_DISABLE_ALL:
-            session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_DISABLE_ALL);
-            break;
-        case GST_ORT_OPTIMIZATION_LEVEL_ENABLE_BASIC:
-            session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_BASIC);
-            break;
-        case GST_ORT_OPTIMIZATION_LEVEL_ENABLE_EXTENDED:
-            session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_EXTENDED);
-            break;
-        case GST_ORT_OPTIMIZATION_LEVEL_ENABLE_ALL:
-            session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
-            break;
-        default:
-            session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_EXTENDED);
-            break;
-    }
-
-    switch (provider) {
-        case GST_ORT_EXECUTION_PROVIDER_CUDA:
+    try {
+        switch (opti_level) {
+            case GST_ORT_OPTIMIZATION_LEVEL_DISABLE_ALL:
+                session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_DISABLE_ALL);
+                break;
+            case GST_ORT_OPTIMIZATION_LEVEL_ENABLE_BASIC:
+                session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_BASIC);
+                break;
+            case GST_ORT_OPTIMIZATION_LEVEL_ENABLE_EXTENDED:
+                session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_EXTENDED);
+                break;
+            case GST_ORT_OPTIMIZATION_LEVEL_ENABLE_ALL:
+                session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+                break;
+            default:
+                session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_EXTENDED);
+                break;
+        }
+        switch (provider) {
+            case GST_ORT_EXECUTION_PROVIDER_CUDA:
 #ifdef GST_ML_ONNX_RUNTIME_HAVE_CUDA
-            Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_CUDA(session_options, device_id));
+                Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_CUDA(session_options, device_id));
 #else 
-            GST_ERROR ("Unable to setup CUDA execution provider!");
-            return false;
+                GST_ERROR ("Unable to setup CUDA execution provider!");
+                return false;
 #endif
-            break;
-        case GST_ORT_EXECUTION_PROVIDER_CPU:
-            break;
-        default:
-            break;
+                break;
+            case GST_ORT_EXECUTION_PROVIDER_CPU:
+                break;
+            default:
+                break;
+        }
+        session = Ort::Session(env, onnx_model_path.c_str(), session_options);
+        return true;
+    } catch (Ort::Exception& e) {
+        GST_ERROR ("%s\n", e.what());
+        return false;
     }
-    session = Ort::Session(env, onnx_model_path.c_str(), session_options);
-    return true;
 }
 
 /**
  * @brief Parses ONNX model input/output information.
  */
-void OrtClient::setModelInputOutput() {
-    num_input_nodes = session.GetInputCount();
-    input_node_names = std::vector<const char*>(num_input_nodes);
-    input_node_dims = std::vector<std::vector<int64_t>>(num_input_nodes);
-
-    num_output_nodes = session.GetOutputCount();
-    output_node_names = std::vector<const char*>(num_output_nodes);
-    output_node_dims = std::vector<std::vector<int64_t>>(num_output_nodes);
-
-    // Input nodes
-    for (size_t i = 0; i < num_input_nodes; i++) {
-        char *input_name = session.GetInputName(i, allocator);
-        input_node_names[i] = input_name;
-        Ort::TypeInfo type_info = session.GetInputTypeInfo(i);
-        auto tensor_info = type_info.GetTensorTypeAndShapeInfo();
-        input_node_dims[i] = tensor_info.GetShape();
-    }
-    // Object detection model should only take in one input node (e.g. an image)
-    assert(input_node_dims.size() == 1);
-    // Fix variable batch size (batch size of -1), as we process a single frame at a time
-    if (input_node_dims[0][0] == -1) {
-        input_node_dims[0][0] = 1;
-    }
-    // Output nodes
-    for (size_t i = 0; i < num_output_nodes; i++) {
-        char *output_name = session.GetOutputName(i, allocator);
-        output_node_names[i] = output_name;
-        Ort::TypeInfo type_info = session.GetOutputTypeInfo(i);
-        auto tensor_info = type_info.GetTensorTypeAndShapeInfo();
-        output_node_dims[i] = tensor_info.GetShape();
+bool OrtClient::setModelInputOutput() {
+    try {
+        num_input_nodes = session.GetInputCount();
+        input_node_names = std::vector<const char*>(num_input_nodes);
+        input_node_dims = std::vector<std::vector<int64_t>>(num_input_nodes);
+        num_output_nodes = session.GetOutputCount();
+        output_node_names = std::vector<const char*>(num_output_nodes);
+        output_node_dims = std::vector<std::vector<int64_t>>(num_output_nodes);
+        // Input nodes
+        for (size_t i = 0; i < num_input_nodes; i++) {
+            char *input_name = session.GetInputName(i, allocator);
+            input_node_names[i] = input_name;
+            Ort::TypeInfo type_info = session.GetInputTypeInfo(i);
+            auto tensor_info = type_info.GetTensorTypeAndShapeInfo();
+            input_node_dims[i] = tensor_info.GetShape();
+        }
+        // Object detection model should only take in one input node (e.g. an image)
+        assert(input_node_dims.size() == 1);
+        // Fix variable batch size (batch size of -1), as we process a single frame at a time
+        if (input_node_dims[0][0] == -1) {
+            input_node_dims[0][0] = 1;
+        }
+        // Output nodes
+        for (size_t i = 0; i < num_output_nodes; i++) {
+            char *output_name = session.GetOutputName(i, allocator);
+            output_node_names[i] = output_name;
+            Ort::TypeInfo type_info = session.GetOutputTypeInfo(i);
+            auto tensor_info = type_info.GetTensorTypeAndShapeInfo();
+            output_node_dims[i] = tensor_info.GetShape();
+        }
+        return true;
+    } catch (Ort::Exception& e) {
+        GST_ERROR ("%s\n", e.what());
+        return false;
     }
 }
 
@@ -154,23 +166,17 @@ bool OrtClient::init(std::string const& model_path, std::string const& label_pat
             model = std::unique_ptr<ObjectDetectionModel>(new YOLOv4());
             break;
         default: 
-            // Default model is YOLOv4 as of now
+            // Default model is YOLOv4
             model = std::unique_ptr<ObjectDetectionModel>(new YOLOv4());
             break;
     }
-    // Set up internal tensor value vector (acts as a cache)
-    input_tensor_values = std::vector<float>(model->getInputTensorSize());
-
-    if (!createSession(opti_level, provider, device_id)) {
-        return false;
-    }
-    setModelInputOutput();
     input_tensor_size = model->getInputTensorSize();
-
-    if (!loadClassLabels()) {
+    // Set up internal tensor value vector (acts as a cache)
+    input_tensor_values = std::vector<float>(input_tensor_size);
+    if (!createSession(opti_level, provider, device_id) || !setModelInputOutput() || !loadClassLabels()) {
+        is_init = false;
         return false;
     }
-
     is_init = true;
     return true;
 }
@@ -191,13 +197,16 @@ void OrtClient::runModel(uint8_t *const data, int width, int height, bool is_rgb
         GST_ERROR ("Unable to run inference when ORT client has not been initialized!");
         return;
     }
-    //auto memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
-    model->preprocess(data, input_tensor_values, width, height, is_rgb);
-    Ort::Value input_tensor = Ort::Value::CreateTensor<float>(memory_info, input_tensor_values.data(), input_tensor_size, input_node_dims[0].data(), input_node_dims[0].size());
-    assert(input_tensor.IsTensor());
-
-    std::vector<Ort::Value> model_output = session.Run(Ort::RunOptions{nullptr}, input_node_names.data(), &input_tensor, num_input_nodes, output_node_names.data(), num_output_nodes);
-    model->postprocess(model_output, labels, score_threshold, nms_threshold);
+    try {
+        auto memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+        model->preprocess(data, input_tensor_values, width, height, is_rgb);
+        Ort::Value input_tensor = Ort::Value::CreateTensor<float>(memory_info, input_tensor_values.data(), input_tensor_size, input_node_dims[0].data(), input_node_dims[0].size());
+        assert(input_tensor.IsTensor());
+        std::vector<Ort::Value> model_output = session.Run(Ort::RunOptions{nullptr}, input_node_names.data(), &input_tensor, num_input_nodes, output_node_names.data(), num_output_nodes);
+        model->postprocess(model_output, labels, score_threshold, nms_threshold);
+    } catch (Ort::Exception& e) {
+        GST_ERROR ("%s\n", e.what());
+    }
 }
 
 /**

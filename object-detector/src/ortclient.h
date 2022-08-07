@@ -9,7 +9,7 @@ class OrtClient {
     private:
         Ort::Env env;
         Ort::Session session{nullptr};
-        Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+        //Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
 
         std::unique_ptr<ObjectDetectionModel> model;
         std::string onnx_model_path;
@@ -32,7 +32,7 @@ class OrtClient {
         bool is_init;
 
         bool loadClassLabels();
-        void setModelInputOutput();
+        bool setModelInputOutput();
         bool createSession(GstOrtOptimizationLevel opti_level, GstOrtExecutionProvider provider, int device_id); 
 
     public:
