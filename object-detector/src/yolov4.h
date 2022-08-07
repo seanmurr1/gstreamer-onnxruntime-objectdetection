@@ -14,7 +14,6 @@ struct BoundingBox {
     int class_index;
 
     BoundingBox(float xmin, float ymin, float xmax, float ymax, float score, int class_index) : xmin(xmin), ymin(ymin), xmax(xmax), ymax(ymax), score(score), class_index(class_index) {}
-
 };
 
 class YOLOv4 : public ObjectDetectionModel {
@@ -43,22 +42,22 @@ class YOLOv4 : public ObjectDetectionModel {
         std::vector<std::list<std::unique_ptr<BoundingBox>>> class_boxes;
         std::vector<std::unique_ptr<BoundingBox>> filtered_boxes;
 
-        void loadClassColors();
-        void padImage(cv::Mat const& image);
-        std::pair<int, float> findMaxClass(float const *layer_output, long offset);
-        bool transformCoordinates(std::vector<float>& coords, int layer, int row, int col, int anchor);
-        void getBoundingBoxes(std::vector<Ort::Value> const& model_output, float threshold);
-        float bbox_iou(std::unique_ptr<BoundingBox> const& bbox1, std::unique_ptr<BoundingBox> const& bbox2);
-        void nms(float threshold);
-        void writeBoundingBoxes(std::vector<std::string> const& class_names);
+        void LoadClassColors();
+        void PadImage(cv::Mat const& image);
+        std::pair<int, float> FindMaxClass(float const *layer_output, long offset);
+        bool TransformCoordinates(std::vector<float>& coords, int layer, int row, int col, int anchor);
+        void GetBoundingBoxes(std::vector<Ort::Value> const& model_output, float threshold);
+        float BboxIOU(std::unique_ptr<BoundingBox> const& bbox1, std::unique_ptr<BoundingBox> const& bbox2);
+        void Nms(float threshold);
+        void WriteBoundingBoxes(std::vector<std::string> const& class_names);
 
     public:
         YOLOv4();
         ~YOLOv4() = default;
-        size_t getNumClasses();
-        size_t getInputTensorSize();
-        void preprocess(uint8_t *const data, std::vector<float>& input_tensor_values, int width, int height, bool is_rgb);
-        void postprocess(std::vector<Ort::Value> const& model_output, std::vector<std::string> const& class_labels, float score_threshold, float nms_threshold);
+        size_t GetNumClasses();
+        size_t GetInputTensorSize();
+        void Preprocess(uint8_t *const data, std::vector<float>& input_tensor_values, int width, int height, bool is_rgb);
+        void Postprocess(std::vector<Ort::Value> const& model_output, std::vector<std::string> const& class_labels, float score_threshold, float nms_threshold);
 };
 
 #endif

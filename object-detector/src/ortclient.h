@@ -31,17 +31,17 @@ class OrtClient {
 
         bool is_init;
 
-        bool loadClassLabels();
-        bool setModelInputOutput();
-        bool createSession(GstOrtOptimizationLevel opti_level, GstOrtExecutionProvider provider, int device_id); 
+        bool LoadClassLabels();
+        bool SetModelInputOutput();
+        bool CreateSession(GstOrtOptimizationLevel opti_level, GstOrtExecutionProvider provider, int device_id); 
 
     public:
         OrtClient();
         ~OrtClient();
-        bool init(std::string const& model_path, std::string const& label_path, GstOrtOptimizationLevel = GST_ORT_OPTIMIZATION_LEVEL_ENABLE_EXTENDED, GstOrtExecutionProvider = GST_ORT_EXECUTION_PROVIDER_CPU, GstOrtDetectionModel = GST_ORT_DETECTION_MODEL_YOLOV4, int = 0);
-        bool isInitialized();
-        void runModel(uint8_t *const data, int width, int height, bool is_rgb, float = 0.25, float = 0.213);
-        void runModel(uint8_t *const data, GstVideoMeta *vmeta, float = 0.25, float = 0.213);
+        bool Init(std::string const& model_path, std::string const& label_path, GstOrtOptimizationLevel = GST_ORT_OPTIMIZATION_LEVEL_ENABLE_EXTENDED, GstOrtExecutionProvider = GST_ORT_EXECUTION_PROVIDER_CPU, GstOrtDetectionModel = GST_ORT_DETECTION_MODEL_YOLOV4, int = 0);
+        bool IsInitialized();
+        void RunModel(uint8_t *const data, int width, int height, bool is_rgb, float = 0.25, float = 0.213);
+        void RunModel(uint8_t *const data, GstVideoMeta *vmeta, float = 0.25, float = 0.213);
 };
 
 #endif

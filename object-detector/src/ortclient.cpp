@@ -25,7 +25,7 @@ OrtClient::~OrtClient() {
     }
 }
 
-bool OrtClient::isInitialized() {
+bool OrtClient::IsInitialized() {
     return is_init;
 }
 
@@ -37,7 +37,7 @@ bool OrtClient::isInitialized() {
  * @return true if setup succeeded.
  * @return false if setup failed.
  */
-bool OrtClient::createSession(GstOrtOptimizationLevel opti_level, GstOrtExecutionProvider provider, int device_id) {
+bool OrtClient::CreateSession(GstOrtOptimizationLevel opti_level, GstOrtExecutionProvider provider, int device_id) {
     try {
         switch (opti_level) {
             case GST_ORT_OPTIMIZATION_LEVEL_DISABLE_ALL:
@@ -81,7 +81,7 @@ bool OrtClient::createSession(GstOrtOptimizationLevel opti_level, GstOrtExecutio
 /**
  * @brief Parses ONNX model input/output information.
  */
-bool OrtClient::setModelInputOutput() {
+bool OrtClient::SetModelInputOutput() {
     try {
         num_input_nodes = session.GetInputCount();
         input_node_names = std::vector<const char*>(num_input_nodes);
@@ -124,8 +124,8 @@ bool OrtClient::setModelInputOutput() {
  * @return true if class labels are properly formatted.
  * @return false if label file was malformed.
  */
-bool OrtClient::loadClassLabels() {
-    size_t num_classes = model->getNumClasses();
+bool OrtClient::LoadClassLabels() {
+    size_t num_classes = model->GetNumClasses();
     labels = std::vector<std::string>(num_classes);
     std::ifstream input(class_labels_path);
     if (!input.good()) {
@@ -157,7 +157,7 @@ bool OrtClient::loadClassLabels() {
  * @return true if setup was successful.
  * @return false if setup failed.
  */
-bool OrtClient::init(std::string const& model_path, std::string const& label_path, GstOrtOptimizationLevel opti_level, GstOrtExecutionProvider provider, GstOrtDetectionModel detection_model, int device_id) {
+bool OrtClient::Init(std::string const& model_path, std::string const& label_path, GstOrtOptimizationLevel opti_level, GstOrtExecutionProvider provider, GstOrtDetectionModel detection_model, int device_id) {
     onnx_model_path = model_path;
     class_labels_path = label_path;
     // Setup object detection model
@@ -170,10 +170,10 @@ bool OrtClient::init(std::string const& model_path, std::string const& label_pat
             model = std::unique_ptr<ObjectDetectionModel>(new YOLOv4());
             break;
     }
-    input_tensor_size = model->getInputTensorSize();
+    input_tensor_size = model->GetInputTensorSize();
     // Set up internal tensor value vector (acts as a cache)
     input_tensor_values = std::vector<float>(input_tensor_size);
-    if (!createSession(opti_level, provider, device_id) || !setModelInputOutput() || !loadClassLabels()) {
+    if (!CreateSession(opti_level, provider, device_id) || !SetModelInputOutput() || !LoadClassLabels()) {
         is_init = false;
         return false;
     }
@@ -192,18 +192,18 @@ bool OrtClient::init(std::string const& model_path, std::string const& label_pat
  * @param score_threshold score threshold when filtering bounding boxes.
  * @param nms_threshold threshold for non-maximal suppression and IOU.
  */
-void OrtClient::runModel(uint8_t *const data, int width, int height, bool is_rgb, float score_threshold, float nms_threshold) {
+void OrtClient::RunModel(uint8_t *const data, int width, int height, bool is_rgb, float score_threshold, float nms_threshold) {
     if (!is_init) {
         GST_ERROR ("Unable to run inference when ORT client has not been initialized!");
         return;
     }
     try {
         auto memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
-        model->preprocess(data, input_tensor_values, width, height, is_rgb);
+        model->Preprocess(data, input_tensor_values, width, height, is_rgb);
         Ort::Value input_tensor = Ort::Value::CreateTensor<float>(memory_info, input_tensor_values.data(), input_tensor_size, input_node_dims[0].data(), input_node_dims[0].size());
         assert(input_tensor.IsTensor());
         std::vector<Ort::Value> model_output = session.Run(Ort::RunOptions{nullptr}, input_node_names.data(), &input_tensor, num_input_nodes, output_node_names.data(), num_output_nodes);
-        model->postprocess(model_output, labels, score_threshold, nms_threshold);
+        model->Postprocess(model_output, labels, score_threshold, nms_threshold);
     } catch (Ort::Exception& e) {
         GST_ERROR ("%s\n", e.what());
     }
@@ -218,13 +218,13 @@ void OrtClient::runModel(uint8_t *const data, int width, int height, bool is_rgb
  * @param score_threshold score threshold when filtering bounding boxes.
  * @param nms_threshold threshold for non-maximal suppression and IOU.
  */
-void OrtClient::runModel(uint8_t *const data, GstVideoMeta *vmeta, float score_threshold, float nms_threshold) {
+void OrtClient::RunModel(uint8_t *const data, GstVideoMeta *vmeta, float score_threshold, float nms_threshold) {
     switch (vmeta->format) {
         case GST_VIDEO_FORMAT_RGB:
-            runModel(data, vmeta->width, vmeta->height, true, score_threshold, nms_threshold);
+            RunModel(data, vmeta->width, vmeta->height, true, score_threshold, nms_threshold);
             break;
         case GST_VIDEO_FORMAT_BGR:
-            runModel(data, vmeta->width, vmeta->height, false, score_threshold, nms_threshold);
+            RunModel(data, vmeta->width, vmeta->height, false, score_threshold, nms_threshold);
             break; 
         default:
             GST_ERROR ("Unable to recognize color format!");

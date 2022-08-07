@@ -284,7 +284,7 @@ gst_ortobjectdetector_ort_setup (GstBaseTransform *base) {
   Gstortobjectdetector *self = GST_ORTOBJECTDETECTOR (base);
   auto ort_client = (OrtClient*) self->ort_client;
   GST_OBJECT_LOCK (self);
-  if (ort_client->isInitialized()) {
+  if (ort_client->IsInitialized()) {
     GST_OBJECT_UNLOCK (self);
     return TRUE;
   }
@@ -304,7 +304,7 @@ gst_ortobjectdetector_ort_setup (GstBaseTransform *base) {
   GST_INFO_OBJECT (self, "detection-model: %d\n", self->detection_model);
   GST_INFO_OBJECT (self, "device-id: %d\n", self->device_id);
   GST_INFO_OBJECT (self, "Initializing ORT client...\n");
-  gboolean res = ort_client->init(self->model_file, self->label_file, self->optimization_level, self->execution_provider, self->detection_model, self->device_id);
+  gboolean res = ort_client->Init(self->model_file, self->label_file, self->optimization_level, self->execution_provider, self->detection_model, self->device_id);
   GST_INFO_OBJECT (self, "Initialized: %s\n", res ? "true" : "false");
   GST_OBJECT_UNLOCK (self);
   return res;
@@ -366,7 +366,7 @@ gst_ortobjectdetector_transform_ip (GstBaseTransform * base, GstBuffer * outbuf)
 
   if (gst_buffer_map(outbuf, &info, GST_MAP_READWRITE)) {
     // Modify frame in place
-    ort_client->runModel(info.data, vmeta, self->score_threshold, self->nms_threshold);
+    ort_client->RunModel(info.data, vmeta, self->score_threshold, self->nms_threshold);
     gst_buffer_unmap (outbuf, &info);
   }
 
