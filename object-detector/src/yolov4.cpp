@@ -306,6 +306,12 @@ void YOLOv4::WriteBoundingBoxes(std::vector<std::string> const& class_names) {
     auto c2 = cv::Point(bbox->xmax, bbox->ymax);
 
     cv::Scalar color = class_colors[bbox->class_index];
+    // Shift color for consistency if image is BGR
+    if (!is_rgb) {
+      auto temp = color[0];
+      color[0] = color[2];
+      color[2] = temp;
+    }
     // Place rectangle around bounding box
     cv::Rect rect = cv::Rect(c1, c2);
     cv::rectangle(org_image, rect, color, bbox_thick);
