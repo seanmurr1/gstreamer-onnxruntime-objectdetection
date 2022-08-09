@@ -78,4 +78,10 @@ This is a sample driver program to allow users to test the ORT functionality of 
 without using the full plugin. User's can input a few CL arguments to run object detection 
 on a single image. Please see the `ort-driver.cpp` file for more details.
 
-
+## Future Work
+- Add support for more object detection models (e.g. FasterRCNN)
+- Add support for more ORT execution providers (e.g. TensorRT)
+- Optimize pre/post-processing steps
+  - remove OpenCV dependency
+  - manually parse images
+- Add more plugin tests
