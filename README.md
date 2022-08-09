@@ -1,19 +1,36 @@
-# NOTE
-This README is cloned from a GStreamer plugin boilerplate repo. It will be updated shortly
-to reference this repo
+# GStreamer ONNX Runtime Object Detection Plugin
 
-# GStreamer template repository
+## Background
+GStreamer is a multimedia framework that allows users to create data pipelines
+that link various components/plugins to create workflows and/or streaming applications. 
+See <https://gstreamer.freedesktop.org/> for more information.
 
-This git module contains template code for possible GStreamer projects.
+ONNX Runtime is a machine learning inferencing engine/framework that allows users to 
+optimize inferencing with ONNX models. See <https://onnxruntime.ai/> for more information.
 
-* gst-app :
-  basic meson-based layout for writing a GStreamer-based application.
+## The Plugin
+The ORT Object Detection plugin is a GStreamer plugin that allows users to perform 
+inferencing with an object detection model in real time with a GST pipeline.
 
-* gst-plugin :
-  basic meson-based layout and basic filter code for writing a GStreamer plug-in.
+Users may create a GST pipeline that includes some form of video data, pass that 
+video data through the ortobjectdetection plugin, and receive processed video 
+frames that include the bounding boxes and accuracy scores from the object detection
+inferencing session.
 
-## License
+The plugin includes a variety of options in which users may customize. These include:
+- ONNX model file path
+- label file path
+- score threshold
+- nms threshold
+- optimization level
+- execution provider
+- hardware acceleration device
+- object detection model
 
+Currently, the plugin supports only one object detection model, YOLOv4, and two
+execution providers, CPU (default) and CUDA.
+
+## License TODO
 This code is provided under a MIT license [MIT], which basically means "do
 with it as you wish, but don't blame us if it doesn't work". You can use
 this code for any project as you wish, under any license as you wish. We
@@ -21,61 +38,44 @@ recommend the use of the LGPL [LGPL] license for applications and plugins,
 given the minefield of patents the multimedia is nowadays. See our website
 for details [Licensing].
 
-## Usage
+## Requirements/Dependencies
+- cmake >= 3.22.5 <https://cmake.org/>
+- meson build system >= 0.54.0 <https://mesonbuild.com/>
+- ninja >= 1.10.0 <https://ninja-build.org/>
+- GStreamer >= 1.19 <https://gstreamer.freedesktop.org/>
+- OpenCV >= 4.6.0 <https://opencv.org/>
+- ONNX Runtime TODO <https://onnxruntime.ai/>
 
-Configure and build all examples (application and plugins) as such:
+NOTE: if you wish to utilize hardware acceleration, please install the corresponding 
+version of ORT (e.g. with CUDA support).
+
+## Usage
+Configure and build all targets (driver, plugin, tests) as such:
 
     meson builddir
     ninja -C builddir
 
-See <https://mesonbuild.com/Quick-guide.html> on how to install the Meson
-build system and ninja.
+### Targets
 
-Modify `gst-plugin/meson.build` to add or remove source files to build or
-add additional dependencies or compiler flags or change the name of the
-plugin file to be installed.
+#### libgstortobjectdetector.so
+This is the built plugin. You can check if it has been built correctly with:
 
-Modify `meson.build` to check for additional library dependencies
-or other features needed by your plugin.
+    gst-inspect-1.0 builddir/objectdetector/libgstortobjectdetector.so
 
-Once the plugin is built you can either install system-wide it with `sudo ninja
--C builddir install` (however, this will by default go into the `/usr/local`
-prefix where it won't be picked up by a `GStreamer` installed from packages, so
-you would need to set the `GST_PLUGIN_PATH` environment variable to include or
-point to `/usr/local/lib/gstreamer-1.0/` for your plugin to be found by a
-from-package `GStreamer`).
+You may need to update GStreamer's plugin path such that gst-inspect can properly 
+pick it up without an absolute path. This can be done with 
+    export GST_PLUGIN_PATH=<path to plugin>
 
-Alternatively, you will find your plugin binary in `builddir/gst-plugins/src/`
-as `libgstplugin.so` or similar (the extension may vary), so you can also set
-the `GST_PLUGIN_PATH` environment variable to the `builddir/gst-plugins/src/`
-directory (best to specify an absolute path though).
+Now you can run `gst-inspect-1.0 ortobjectdetector` to see information regarding the plugin.
+Please see the `gstortobjectdetector.cpp` file for sample pipelines/usage of the plugin.
 
-You can also check if it has been built correctly with:
+#### ortobjectdetector-test
+This is a test file for the plugin. Make sure that you update
+the GST_PLUGIN_PATH first. This tests various supported/unsupported formats of the plugin.
 
-    gst-inspect-1.0 builddir/gst-plugins/src/libgstplugin.so
-
-## Auto-generating your own plugin
-
-You will find a helper script in `gst-plugins/tools/make_element` to generate
-the source/header files for a new plugin.
-
-To create sources for `myfilter` based on the `gsttransform` template run:
-
-``` shell
-cd src;
-../tools/make_element myfilter gsttransform
-```
-
-This will create `gstmyfilter.c` and `gstmyfilter.h`. Open them in an editor and
-start editing. There are several occurances of the string `template`, update
-those with real values. The plugin will be called `myfilter` and it will have
-one element called `myfilter` too. Also look for `FIXME:` markers that point you
-to places where you need to edit the code.
-
-You can then add your sources files to `gst-plugins/meson.build` and re-run
-ninja to have your plugin built.
+#### ort-driver
+This is a sample driver program to allow users to test the ORT functionality of this repo
+without using the full plugin. User's can input a few CL arguments to run object detection 
+on a single image. Please see the `ort-driver.cpp` file for more details.
 
 
-[MIT]: http://www.opensource.org/licenses/mit-license.php or COPYING.MIT
-[LGPL]: http://www.opensource.org/licenses/lgpl-license.php or COPYING.LIB
-[Licensing]: https://gstreamer.freedesktop.org/documentation/application-development/appendix/licensing.html

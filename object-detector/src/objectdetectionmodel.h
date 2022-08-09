@@ -5,6 +5,10 @@
 #include <onnxruntime_cxx_api.h>
 #include <gst/video/video.h>
 
+/**
+ * @brief Interface for an ML object detection model.
+ * Includes pre/post-processing steps and model information.
+ */
 class ObjectDetectionModel {
   public:
     virtual ~ObjectDetectionModel() = 0;

@@ -2,6 +2,20 @@
 #include <opencv2/opencv.hpp>
 #include "src/ortclient.h"
 
+/**
+ * Sample driver program to test ORT functionality without using the full plugin.
+ * 
+ * Usage: ./ort-driver <path to ONNX model file> <path to label file for model> <path to input image> <path to desired output image location> <optional execution provider>
+ * where the execution provider may be CPU or CUDA (default is CPU). 
+ * 
+ * Most common image formats should work, e.g. PNG, JPG, etc. as long as OpenCV supports it.
+ * 
+ * Currently, this driver only uses YOLOv4. However, as more object detection algorithms are implemented,
+ * this will be a configurable CL arg as well.
+ * 
+ * Object detection will be run on input image, and the output image will essentially be a copy of the 
+ * input image with bounding box information and accuracy scores written to it.
+ */
 int main(int argc, char* argv[]) {
   if (argc != 5 && argc != 6) {
     std::cout << "Usage: " << argv[0]  << " <model-file> <label-file> <input-image> <output-location> <execution-provider>" << std::endl;

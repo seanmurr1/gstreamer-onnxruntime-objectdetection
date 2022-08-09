@@ -5,6 +5,10 @@
 #include "objectdetectionmodel.h"
 #include "gstortelement.h"
 
+/**
+ * @brief ONNX Runtime client. Able to run object-detection
+ * inferencing sessions with an object detection model.
+ */
 class OrtClient {
   private:
     Ort::Env env;

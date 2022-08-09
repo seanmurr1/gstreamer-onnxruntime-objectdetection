@@ -21,15 +21,45 @@
 
 /**
  * SECTION:element-ortobjectdetector
+ * @short_description: Detect objects in each video frame.
  *
- * FIXME:Describe ortobjectdetector here.
+ * ortobjectdetector is a GStreamer plugin that allows users to run
+ * ONNX Runtime (ORT) object detection inference sessions on a pipeline of 
+ * video data. Users can utilize any supported ONNX model (e.g. YOLOv4).
+ * 
+ * Please see the README for installation instructions.
+ * 
+ * Users may control the specific object detection model used, optimization level,
+ * execution provider, filtering thresholds, and hardware acceleration device.
+ * 
+ * The plugin supports either RGB or BGR video data in GST's video/x-raw format.
+ * It outputs the same data format.
  *
- * <refsect2>
- * <title>Example launch line</title>
- * |[
- * gst-launch -v -m fakesrc ! ortobjectdetector ! fakesink silent=TRUE
- * ]|
- * </refsect2>
+ * ## Example pipeline:
+ * 
+ * ```
+ * gst-launch-1.0 filesrc location=video1.mp4 ! \
+ * qtdemux name=demux  demux.audio_0 ! \
+ * queue ! \
+ * decodebin ! \
+ * audioconvert ! \
+ * audioresample ! \
+ * autoaudiosink  
+ * demux.video_0 ! \
+ * queue ! \
+ * decodebin ! \
+ * videoconvert ! \
+ * ortobjectdetector \
+ * model-file=yolov4.onnx \
+ * label-file=labels.txt \
+ * score-threshold=0.25 \ 
+ * nms-threshold=0.213 \ 
+ * optimization-level=enable-extended \
+ * execution-provider=cpu \
+ * detection-model=yolov4 ! \
+ * videoconvert ! \
+ * fpsdisplaysink
+ * ```
  */
 
 #ifdef HAVE_CONFIG_H

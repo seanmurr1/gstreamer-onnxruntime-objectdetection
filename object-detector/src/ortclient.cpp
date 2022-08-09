@@ -7,6 +7,9 @@
 #include <providers/cuda/cuda_provider_factory.h>
 #endif
 
+/**
+ * @brief Construct a OrtClient object. Creates ORT environment.
+ */
 OrtClient::OrtClient() {
   try {
     env = Ort::Env(ORT_LOGGING_LEVEL_WARNING, "test");
@@ -25,15 +28,20 @@ OrtClient::~OrtClient() {
   }
 }
 
+/**
+ * @return true if an ORT session has succesfully been created.
+ * @return false otherwise.
+ */
 bool OrtClient::IsInitialized() {
   return is_init;
 }
 
 /**
- * @brief Set up ONNX Runtime environment, session options, and create new session.
+ * @brief Set up ONNX Runtime session options, and create new session.
  * 
  * @param opti_level ORT optimization level.
  * @param provider ORT execution provider.
+ * @param device_id hardware acceleration device ID.
  * @return true if setup succeeded.
  * @return false if setup failed.
  */
@@ -80,6 +88,9 @@ bool OrtClient::CreateSession(GstOrtOptimizationLevel opti_level, GstOrtExecutio
 
 /**
  * @brief Parses ONNX model input/output information.
+ * 
+ * @return true if model input/output was successfully parsed.
+ * @return false otherwise.
  */
 bool OrtClient::SetModelInputOutput() {
   try {
@@ -146,7 +157,7 @@ bool OrtClient::LoadClassLabels() {
 
 /**
  * @brief Initializes ORT client for object detection.
- * Creates ORT environment, session, parses input/output, etc.
+ * Creates session, parses input/output, etc.
  * 
  * @param model_path path to model file.
  * @param label_path path to class labels file.
@@ -214,7 +225,7 @@ void OrtClient::RunModel(uint8_t *const data, int width, int height, bool is_rgb
  * Input data is modified in-place.
  * 
  * @param data input image data.
- * @param vmeta GST video meta.
+ * @param vmeta GStreamer video meta for current frame.
  * @param score_threshold score threshold when filtering bounding boxes.
  * @param nms_threshold threshold for non-maximal suppression and IOU.
  */

@@ -3,6 +3,7 @@
 
 #include <gst/gst.h>
 
+// Optimization level for ORT inferencing.
 typedef enum {
   GST_ORT_OPTIMIZATION_LEVEL_DISABLE_ALL,
   GST_ORT_OPTIMIZATION_LEVEL_ENABLE_BASIC,
@@ -10,11 +11,13 @@ typedef enum {
   GST_ORT_OPTIMIZATION_LEVEL_ENABLE_ALL
 } GstOrtOptimizationLevel;
 
+// Supported ORT execution providers.
 typedef enum {
   GST_ORT_EXECUTION_PROVIDER_CPU,
   GST_ORT_EXECUTION_PROVIDER_CUDA
 } GstOrtExecutionProvider;
 
+// Supported object detection models.
 typedef enum {
   GST_ORT_DETECTION_MODEL_YOLOV4
 } GstOrtDetectionModel;

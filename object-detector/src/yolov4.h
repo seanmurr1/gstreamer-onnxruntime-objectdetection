@@ -16,6 +16,9 @@ struct BoundingBox {
   BoundingBox(float xmin, float ymin, float xmax, float ymax, float score, int class_index) : xmin(xmin), ymin(ymin), xmax(xmax), ymax(ymax), score(score), class_index(class_index) {}
 };
 
+/**
+ * @brief YOLOv4 object detection model. Performs pre/post-processing steps.
+ */
 class YOLOv4 : public ObjectDetectionModel {
   private:
     // Model information
@@ -35,6 +38,7 @@ class YOLOv4 : public ObjectDetectionModel {
     bool is_rgb;
         
     std::vector<cv::Scalar> class_colors;
+    
     std::vector<float> anchors;
     std::vector<float> strides;
     std::vector<float> xyscale;
