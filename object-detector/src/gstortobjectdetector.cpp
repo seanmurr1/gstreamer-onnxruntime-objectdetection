@@ -209,7 +209,7 @@ gst_ortobjectdetector_class_init (GstortobjectdetectorClass * klass)
 static void
 gst_ortobjectdetector_init (Gstortobjectdetector * self)
 {
-  self->ort_client = new OrtClient();
+  self->ort_client = std::unique_ptr<OrtClient>(new OrtClient());
   self->score_threshold = DEFAULT_SCORE_THRESHOLD;
   self->nms_threshold = DEFAULT_NMS_THRESHOLD;
   self->optimization_level = DEFAULT_OPTIMIZATION_LEVEL;
@@ -312,7 +312,8 @@ gst_ortobjectdetector_get_property (GObject * object, guint prop_id,
 static gboolean
 gst_ortobjectdetector_ort_setup (GstBaseTransform *base) {
   Gstortobjectdetector *self = GST_ORTOBJECTDETECTOR (base);
-  auto ort_client = (OrtClient*) self->ort_client;
+  std::unique_ptr<OrtClient>& ort_client = self->ort_client;
+  
   GST_OBJECT_LOCK (self);
   if (ort_client->IsInitialized()) {
     GST_OBJECT_UNLOCK (self);
@@ -369,7 +370,7 @@ static GstFlowReturn
 gst_ortobjectdetector_transform_ip (GstBaseTransform * base, GstBuffer * outbuf)
 {
   Gstortobjectdetector *self = GST_ORTOBJECTDETECTOR (base);
-  auto ort_client = (OrtClient*) self->ort_client;
+  std::unique_ptr<OrtClient>& ort_client = self->ort_client;
 
   if (!gst_ortobjectdetector_ort_setup(base)) {
     return GST_FLOW_ERROR;

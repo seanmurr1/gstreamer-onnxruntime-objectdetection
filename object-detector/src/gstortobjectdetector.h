@@ -26,6 +26,7 @@
 #include <gst/gst.h>
 #include <gst/base/gstbasetransform.h>
 
+#include "ortclient.h"
 #include "gstortelement.h"
 
 G_BEGIN_DECLS
@@ -39,7 +40,7 @@ struct _Gstortobjectdetector {
 
   gchar *model_file;
   gchar *label_file;
-  gpointer ort_client;
+  std::unique_ptr<OrtClient> ort_client;
 
   gfloat score_threshold;
   gfloat nms_threshold;
