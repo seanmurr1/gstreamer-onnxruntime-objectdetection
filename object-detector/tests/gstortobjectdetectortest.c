@@ -219,7 +219,7 @@ test_supported_format (GstCaps *caps)
     ck_abort();
   }
 
-  g_timeout_add_seconds(2, g_main_loop_quit, loop);
+  g_timeout_add_seconds(1, g_main_loop_quit, loop);
   g_main_loop_run (loop);
 
   /* clean up */
@@ -241,23 +241,28 @@ GST_START_TEST(test_supported_format_video_bgr)
 }
 GST_END_TEST;
 
+int tests_run_within_valgrind (void)
+{
+  char *p = getenv ("LD_PRELOAD");
+  if (p == NULL)
+    return 0;
+  return (strstr (p, "/valgrind/") != NULL ||
+          strstr (p, "/vgpreload") != NULL);
+}
+
 Suite *gst_ortobjectdetector_suite(void) {
   Suite *s = suite_create("GstOrtObjectDetector");
   TCase *supported_formats = tcase_create("Supported Formats");
   guint timeout;
   timeout = 10;
 
-#ifdef HAVE_VALGRIND
-  {
-    if (RUNNING_ON_VALGRIND)
-      timeout *= 4;
+  if (tests_run_within_valgrind()) {
+    timeout *= 10;
   }
-#endif 
 
   tcase_set_timeout(supported_formats, timeout);
   tcase_add_test(supported_formats, test_supported_format_video_rgb);
   tcase_add_test(supported_formats, test_supported_format_video_bgr);
-
 
   suite_add_tcase(s, supported_formats);
   return s;

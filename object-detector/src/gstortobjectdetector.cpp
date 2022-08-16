@@ -130,6 +130,9 @@ static void gst_ortobjectdetector_get_property (GObject * object,
 static GstFlowReturn gst_ortobjectdetector_transform_ip (GstBaseTransform *
     base, GstBuffer * outbuf);
 
+static void gst_ortobjectdetector_finalize (GObject * object);
+
+
 /* GObject vmethod implementations */
 
 /* initialize the ortobjectdetector's class */
@@ -144,6 +147,7 @@ gst_ortobjectdetector_class_init (GstortobjectdetectorClass * klass)
 
   gobject_class->set_property = gst_ortobjectdetector_set_property;
   gobject_class->get_property = gst_ortobjectdetector_get_property;
+  gobject_class->finalize = gst_ortobjectdetector_finalize;
 
   g_object_class_install_property (gobject_class, PROP_MODEL_FILE,
       g_param_spec_string ("model-file", "ONNX model file", "Path to ONNX model file",
@@ -307,6 +311,15 @@ gst_ortobjectdetector_get_property (GObject * object, guint prop_id,
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
   }
+}
+
+static void
+gst_ortobjectdetector_finalize (GObject * object)
+{
+  Gstortobjectdetector *self = GST_ORTOBJECTDETECTOR (object);
+  g_free (self->model_file);
+  g_free (self->label_file);
+  G_OBJECT_CLASS (gst_ortobjectdetector_parent_class)->finalize (object);
 }
 
 static gboolean

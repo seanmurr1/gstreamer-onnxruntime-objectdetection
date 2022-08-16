@@ -73,6 +73,10 @@ Please see the `gstortobjectdetector.cpp` file for sample pipelines/usage of the
 This is a test file for the plugin. Make sure that you update
 the GST_PLUGIN_PATH first. This tests various supported/unsupported formats of the plugin.
 
+If you wish to run with Valgrind, make sure to add the OpenCV suppression files, e.g:
+    valgrind --leak-check=full --suppressions={path to opencv}/platforms/scripts/valgrind.supp --suppressions={path to opencv}/platforms/scripts/valgrind_3rdparty.supp ./ortobjectdetector-test
+
+
 #### ort-driver
 This is a sample driver program to allow users to test the ORT functionality of this repo
 without using the full plugin. User's can input a few CL arguments to run object detection 
@@ -85,3 +89,8 @@ on a single image. Please see the `ort-driver.cpp` file for more details.
   - remove OpenCV dependency
   - manually parse images
 - Add more plugin tests
+
+### Note about GLib conventions
+GLib typedefs (e.g. `gint`) and such are not used in this repo (for the most part), though
+GST uses them extensively. Fixed size typedefs would potentially be useful, however, the GLib 
+typedefs such as the above don't serve to add portability/constraints.
