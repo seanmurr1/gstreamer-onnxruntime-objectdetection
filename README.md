@@ -44,7 +44,7 @@ for details [Licensing].
 - ninja >= 1.10.0 <https://ninja-build.org/>
 - GStreamer >= 1.19 <https://gstreamer.freedesktop.org/>
 - OpenCV >= 4.6.0 <https://opencv.org/>
-- ONNX Runtime TODO <https://onnxruntime.ai/>
+- ONNX Runtime >= 1.12 <https://onnxruntime.ai/>
 
 NOTE: if you wish to utilize hardware acceleration, please install the corresponding 
 version of ORT (e.g. with CUDA support).
