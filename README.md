@@ -89,6 +89,8 @@ on a single image. Please see the `ort-driver.cpp` file for more details.
   - remove OpenCV dependency
   - manually parse images
 - Add more plugin tests
+  - test unsupported format
+  - test more specifically object detection
 
 ### Note about GLib conventions
 GLib typedefs (e.g. `gint`) and such are not used in this repo (for the most part), though
