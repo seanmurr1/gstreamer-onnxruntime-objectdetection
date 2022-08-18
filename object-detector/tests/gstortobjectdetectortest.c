@@ -219,7 +219,7 @@ test_supported_format (GstCaps *caps)
     ck_abort();
   }
 
-  g_timeout_add_seconds(1, g_main_loop_quit, loop);
+  g_timeout_add_seconds(3, g_main_loop_quit, loop);
   g_main_loop_run (loop);
 
   /* clean up */

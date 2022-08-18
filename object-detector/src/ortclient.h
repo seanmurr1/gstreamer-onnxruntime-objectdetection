@@ -42,6 +42,7 @@ class OrtClient {
     std::vector<std::string> labels;
 
     size_t input_tensor_size;
+    std::vector<Ort::AllocatedStringPtr> stored_names; // Needed to make sure unique_ptrs don't go out of scope
     size_t num_input_nodes;
     std::vector<const char*> input_node_names;
     std::vector<std::vector<int64_t>> input_node_dims;
@@ -62,7 +63,7 @@ class OrtClient {
 
   public:
     OrtClient();
-    ~OrtClient();
+    ~OrtClient() = default;
     bool Init(std::string const& model_path, std::string const& label_path, GstOrtOptimizationLevel = GST_ORT_OPTIMIZATION_LEVEL_ENABLE_EXTENDED, GstOrtExecutionProvider = GST_ORT_EXECUTION_PROVIDER_CPU, GstOrtDetectionModel = GST_ORT_DETECTION_MODEL_YOLOV4, int = 0);
     bool IsInitialized();
     void RunModel(uint8_t *const data, int width, int height, bool is_rgb, float = 0.25, float = 0.213);

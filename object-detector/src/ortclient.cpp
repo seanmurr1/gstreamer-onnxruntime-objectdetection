@@ -39,16 +39,6 @@ OrtClient::OrtClient() {
   }
 }
 
-// TODO: use GetInputNameAllocated to prevent needed to free node names
-OrtClient::~OrtClient() {
-  for (const char* node_name : input_node_names) {
-    allocator.Free(const_cast<void*>(reinterpret_cast<const void*>(node_name)));
-  }
-  for (const char* node_name : output_node_names) {
-    allocator.Free(const_cast<void*>(reinterpret_cast<const void*>(node_name)));
-  }
-}
-
 /**
  * @return true if an ORT session has succesfully been created.
  * @return false otherwise.
@@ -121,10 +111,12 @@ bool OrtClient::SetModelInputOutput() {
     num_output_nodes = session.GetOutputCount();
     output_node_names = std::vector<const char*>(num_output_nodes);
     output_node_dims = std::vector<std::vector<int64_t>>(num_output_nodes);
+    stored_names.reserve(num_input_nodes + num_output_nodes);
     // Input nodes
     for (size_t i = 0; i < num_input_nodes; i++) {
-      char *input_name = session.GetInputName(i, allocator);
-      input_node_names[i] = input_name;
+      auto name = session.GetInputNameAllocated(i, allocator);
+      input_node_names[i] = name.get();
+      stored_names.push_back(move(name));
       Ort::TypeInfo type_info = session.GetInputTypeInfo(i);
       auto tensor_info = type_info.GetTensorTypeAndShapeInfo();
       input_node_dims[i] = tensor_info.GetShape();
@@ -137,8 +129,9 @@ bool OrtClient::SetModelInputOutput() {
     }
     // Output nodes
     for (size_t i = 0; i < num_output_nodes; i++) {
-      char *output_name = session.GetOutputName(i, allocator);
-      output_node_names[i] = output_name;
+      auto name = session.GetOutputNameAllocated(i, allocator);
+      output_node_names[i] = name.get();
+      stored_names.push_back(move(name));
       Ort::TypeInfo type_info = session.GetOutputTypeInfo(i);
       auto tensor_info = type_info.GetTensorTypeAndShapeInfo();
       output_node_dims[i] = tensor_info.GetShape();
