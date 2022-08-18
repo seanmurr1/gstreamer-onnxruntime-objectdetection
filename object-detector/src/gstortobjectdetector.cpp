@@ -72,7 +72,6 @@
 #include <gst/video/video.h>
 #include <gst/video/gstvideometa.h>
 
-
 #include "gstortobjectdetector.h"
 #include "ortclient.h"
 
@@ -90,7 +89,6 @@ enum
   PROP_NMS_THRESHOLD,
   PROP_DETECTION_MODEL,
   PROP_DEVICE_ID
-  // TODO: add image format?
 };
 
 // Default prop values
@@ -194,18 +192,10 @@ gst_ortobjectdetector_class_init (GstortobjectdetectorClass * klass)
   GST_BASE_TRANSFORM_CLASS (klass)->transform_ip =
       GST_DEBUG_FUNCPTR (gst_ortobjectdetector_transform_ip);
 
-  /* debug category for fltering log messages
-   *
-   * FIXME:exchange the string 'Template ortobjectdetector' with your description
-   */
+  /* debug category for fltering log messages */
   GST_DEBUG_CATEGORY_INIT (gst_ortobjectdetector_debug, "ortobjectdetector", 0,
-      "Template ortobjectdetector");
+      "ortobjectdetector debug info");
 }
-
-/*****************************************************
-// TODO: link transform caps in class init?
-// TODO: finalize function
-*****************************************************/
 
 /* initialize the new element
  * initialize instance structure
@@ -354,7 +344,6 @@ gst_ortobjectdetector_ort_setup (GstBaseTransform *base) {
   return res;
 }
 
-
 /* GstBaseTransform vmethod implementations */
 
 /* this function does the actual processing (IP = in place)
@@ -372,13 +361,9 @@ gst_ortobjectdetector_transform_ip (GstBaseTransform * base, GstBuffer * outbuf)
   if (GST_CLOCK_TIME_IS_VALID (GST_BUFFER_TIMESTAMP (outbuf)))
     gst_object_sync_values (GST_OBJECT (self), GST_BUFFER_TIMESTAMP (outbuf));
 
-  /* FIXME: do something interesting here.  This simply copies the source
-   * to the destination. */
-
   if (gst_base_transform_is_passthrough(base)) {
     return GST_FLOW_OK;
   }
-
 
   GstMapInfo info;
   GstVideoMeta *vmeta = gst_buffer_get_video_meta(outbuf);
@@ -407,6 +392,7 @@ ortobjectdetector_init (GstPlugin * ortobjectdetector)
   return GST_ELEMENT_REGISTER (ortobjectdetector, ortobjectdetector);
 }
 
+// Needed for C++ template rather than C 
 #ifndef PACKAGE
 #define PACKAGE "ortobjectdetector"
 #define PACKAGE_VERSION "1.19.0.1"
@@ -415,10 +401,7 @@ ortobjectdetector_init (GstPlugin * ortobjectdetector)
 #define GST_PACKAGE_ORIGIN "https://gstreamer.freedesktop.org"
 #endif
 
-/* gstreamer looks for this structure to register ortobjectdetectors
- *
- * FIXME:exchange the string 'Template ortobjectdetector' with you ortobjectdetector description
- */
+/* gstreamer looks for this structure to register ortobjectdetectors */
 GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
     ortobjectdetector,

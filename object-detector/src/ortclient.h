@@ -34,7 +34,9 @@ class OrtClient {
   private:
     Ort::Env env;
     Ort::Session session{nullptr};
-    //Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
+
+    // This seems to prevent inferencing to occur within plugin:
+    // Ort::MemoryInfo memory_info = Ort::MemoryInfo::CreateCpu(OrtArenaAllocator, OrtMemTypeDefault);
 
     std::unique_ptr<ObjectDetectionModel> model;
     std::string onnx_model_path;
